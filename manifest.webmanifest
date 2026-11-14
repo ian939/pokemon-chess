@@ -1,0 +1,10 @@
+{
+  "name": "포켓몬 체스 챔피언십",
+  "short_name": "포켓몬 체스",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#1d2b53",
+  "theme_color": "#1d2b53",
+  "icons": [{ "src": "assets/icon-180.png", "sizes": "180x180", "type": "image/png" }]
+}
