@@ -3,7 +3,7 @@
 const School = require("../js/school.js");
 const N = +(process.argv[2] || 30);
 const KINDS = { R: ["stars", "starsDark", "capture", "safe"], B: ["stars", "starsDark", "capture", "safe"], Q: ["stars", "starsDark", "capture", "safe"],
-  K: ["stars", "starsDark", "capture", "safe", "cross"], N: ["stars", "starsDark", "capture", "safe"], P: ["stars", "starsDark", "capture", "safe"] };
+  K: ["stars", "starsDark", "capture", "safe", "cross"], N: ["stars", "starsDark", "capture", "safe"], P: ["stars", "pawnBlock", "capture", "safe"] };
 let fail = 0;
 for (const [p, kinds] of Object.entries(KINDS)) {
   for (const k of kinds) {

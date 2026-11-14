@@ -63,5 +63,13 @@ console.log("\n규칙에 어긋난 수 설명");
   eq("핀 걸린 팬텀", M.illegal(p, C.sq("e2"), C.sq("d3")), "그 친구가 움직이면 피카츄가 노려져서 못 움직여.");
 }
 
+console.log("\n리오르(폰) 설명");
+{
+  const s = C.parse("8/8/8/8/8/4p3/4P3/8 w - - 0 1");
+  eq("앞이 막힘", M.illegal(s, C.sq("e2"), C.sq("e3")), "앞에 누가 있으면 리오르는 못 가. 잡을 때만 비스듬히 가!");
+  eq("두 칸도 막힘", M.illegal(s, C.sq("e2"), C.sq("e4")), "앞에 누가 있으면 리오르는 못 가. 잡을 때만 비스듬히 가!");
+  eq("빈 대각선", M.illegal(s, C.sq("e2"), C.sq("d3")), "리오르는 잡을 때만 비스듬히 갈 수 있어.");
+}
+
 console.log(fail ? `\n실패 ${fail}` : "\n모두 통과");
 process.exit(fail ? 1 : 0);

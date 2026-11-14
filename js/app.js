@@ -395,7 +395,7 @@ async function stageMeet(board, p) {
 }
 
 async function stageMissions(board, p, st) {
-  const kindSay = { stars: L.starsGo, starsDark: L.starsDarkGo, capture: L.captureGo, safe: p === "K" ? L.kingSafeGo : L.safeGo, cross: L.crossGo };
+  const kindSay = { stars: L.starsGo, starsDark: L.starsDarkGo, pawnBlock: L.pawnBlockGo, capture: p === "P" ? [L.captureGo, L.pawnCaptureGo] : L.captureGo, safe: p === "K" ? L.kingSafeGo : L.safeGo, cross: L.crossGo };
   for (let i = 0; i < st.n; i++) {
     const ms = School.gen(p, st.kind, Math.floor(Math.random() * 1e6) + i);
     const showDanger = st.kind === "safe" ? i === 0 || p === "K" : st.kind === "cross";
@@ -463,7 +463,7 @@ function runMission(board, ms, o) {
         SFX.no();
         const pm = C.pseudoMoves(st.s).find((x) => x.from === from && x.to === to);
         if (pm && st.s.b[from] === "K") { say(L.kingDanger); board.flash(to, "flash-red"); }
-        else { say(L.illegal); board.shake(from); }
+        else { say(Mentor.illegal(st.s, from, to)); board.shake(from); }
         return;
       }
       busy = true; hintStep = null;

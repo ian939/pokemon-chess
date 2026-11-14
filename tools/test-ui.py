@@ -175,7 +175,8 @@ def main():
             page.evaluate("__step()")
             page.wait_for_timeout(80)
         shot("league-game")
-        drive(lambda: page.evaluate("!!document.querySelector('.rank-box')"), name="league-game")
+        # 결과 창이 뜨거나(드라이버가 바로 눌러 닫았을 수도 있으니) 한 판이 기록되면 끝
+        drive(lambda: page.evaluate("!!document.querySelector('.rank-box') || (() => { const l = __T.Store.data.league; return l.wins + l.losses + l.draws > 0; })()"), name="league-game")
         page.wait_for_timeout(300)
         shot("rank-change")
         lg = page.evaluate("__T.Store.data.league")

@@ -94,11 +94,40 @@
       const free = () => { for (let k = 0; k < 200; k++) { const i = rint(64); if (!b[i] && !stars.includes(i)) return i; } return -1; };
       // 내 말 자리
       let home;
-      if (piece === "P") home = 8 + rint(8);
+      // 폰이 앞이 막히는 판(③ pawnBlock · ④ capture)은 양옆에 대각선이 있게 b~g 줄에서 출발
+      const pawnBlocked = piece === "P" && (kind === "pawnBlock" || kind === "capture");
+      if (pawnBlocked) home = 9 + rint(6);
+      else if (piece === "P") home = 8 + rint(8);
       else if (kind === "cross") home = 4;
       else home = rint(64);
       b[home] = piece;
-      if (piece === "P" && kind !== "capture" && rng() < 0.4) { const h2 = 8 + rint(8); if (!b[h2]) b[h2] = "P"; }
+      if (piece === "P" && kind === "stars" && rng() < 0.4) { const h2 = 8 + rint(8); if (!b[h2]) b[h2] = "P"; }
+      if (pawnBlocked) {
+        // 바로 앞을 상대 말이 막는다 → 앞으로는 못 가고, 비스듬히 잡아야만 길이 열린다
+        b[home + 8] = rng() < 0.7 ? "p" : "n";
+        const hf = home & 7;
+        const cone = (rMin, rMax, needOtherFile) => {
+          for (let k = 0; k < 100; k++) {
+            const r = rMin + rint(rMax - rMin + 1), f = hf + rint(5) - 2;
+            if (f < 0 || f > 7 || Math.abs(f - hf) > r - 1) continue;
+            if (needOtherFile && f === hf) continue;
+            const i = r * 8 + f;
+            if (!b[i] && !stars.includes(i)) return i;
+          }
+          return -1;
+        };
+        if (kind === "pawnBlock") {
+          // 비스듬히 잡을 상대 1~2개, 별은 출발 줄이 아닌 곳에 1~2개
+          for (let k = 0; k < 1 + rint(2); k++) { const i = cone(2, 5, true); if (i >= 0) b[i] = rng() < 0.7 ? "p" : "n"; }
+          for (let k = 0; k < 1 + rint(2); k++) { const i = cone(3, 7, true); if (i >= 0) stars.push(i); }
+        } else {
+          // ④ 잡기: 옆 리오르가 막은 상대를 비스듬히 잡아 줄 수 있게 + 다른 상대 하나
+          const nb = home + (rng() < 0.5 ? -1 : 1);
+          b[nb] = "P";
+          const i = cone(3, 5, false);
+          if (i >= 0) b[i] = rng() < 0.6 ? "p" : "n";
+        }
+      }
       const nStars = kind === "stars" ? sp.stars[0] : kind === "starsDark" ? sp.stars[1] : kind === "safe" ? sp.stars[0] : 0;
       // 폰의 별은 앞쪽 원뿔 안에
       const starSq = () => {
@@ -112,7 +141,7 @@
         return -1;
       };
       for (let k = 0; k < nStars; k++) { const i = starSq(); if (i >= 0) stars.push(i); }
-      if (kind === "capture") {
+      if (kind === "capture" && piece !== "P") {
         const n = sp.cap;
         for (let k = 0; k < n; k++) {
           let i = free();
@@ -139,7 +168,7 @@
       const ms = {
         piece, kind, b, stars, frozen: new Set(frozen),
         goal: kind === "capture" ? "capture" : kind === "cross" ? "cross" : "stars",
-        show: kind === "stars" || kind === "capture",
+        show: kind === "stars" || kind === "capture" || kind === "pawnBlock",
         danger: kind === "safe" || kind === "cross",
       };
       const s0 = stateOf(b.slice());

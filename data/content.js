@@ -33,7 +33,8 @@
     const list = [
       { kind: "meet", title: "만나기" },
       { kind: "stars", title: "별 줍기", n: twice ? 4 : 3 },
-      { kind: "starsDark", title: "빛 끄고 별 줍기", n: twice ? 4 : 3 },
+      // 폰은 ③ 을 '앞이 막혔어'로 바꾼다: 앞이 막히면 못 가고, 잡을 때만 비스듬히 (사용자 확정 2026-11-14)
+      p === "P" ? { kind: "pawnBlock", title: "앞이 막혔어", n: 4 } : { kind: "starsDark", title: "빛 끄고 별 줍기", n: twice ? 4 : 3 },
       { kind: "capture", title: "잡기", n: 3 },
       { kind: "safe", title: "안전한 칸", n: 3 },
       { kind: "battle", title: "미니 대결" },

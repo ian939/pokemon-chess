@@ -151,7 +151,16 @@
   /** 규칙에 어긋나는 칸을 눌렀을 때 */
   function illegal(s, from, to) {
     const pm = C.pseudoMoves(s).find((m) => m.from === from && m.to === to);
-    if (!pm) return L.illegal;
+    if (!pm) {
+      // 리오르(폰)의 헷갈리는 규칙은 따로 설명한다
+      const p = s.b[from];
+      if (p && p.toUpperCase() === "P") {
+        const dir = p === "P" ? 8 : -8, df = (to & 7) - (from & 7);
+        if (df === 0 && (to === from + dir || to === from + 2 * dir) && (s.b[from + dir] || s.b[to])) return L.pawnBlocked;
+        if (Math.abs(df) === 1 && to === from + dir + df && !s.b[to]) return L.pawnDiagEmpty;
+      }
+      return L.illegal;
+    }
     if (C.inCheck(s)) return L.stillCheck;
     if (pm.p === "K") return L.kingDanger;
     return L.pinned;
