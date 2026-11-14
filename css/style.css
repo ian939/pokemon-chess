@@ -276,6 +276,20 @@ img { image-rendering: pixelated; -webkit-user-drag: none; }
 .promo { font-size: 24px; font-weight: 700; color: var(--blue); }
 .gate input, .parent input { font: inherit; font-size: 28px; width: 160px; text-align: center; padding: 8px; border: 3px solid var(--ink); border-radius: 10px; }
 
+/* ---------- 어른 모드 ---------- */
+.unlock-tag { background: var(--gold); color: var(--ink); font-weight: 700; font-size: 15px; padding: 6px 12px; border-radius: 10px; }
+.stage-pick h2 { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.stage-pick h2 img { width: 56px; height: 56px; }
+.stage-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.stage-list .btn { text-align: left; }
+.stage-list .btn.done { background: #eaf7e6; }
+.free-pick { margin-top: 6px; }
+.free-list { display: flex; gap: 10px; flex-wrap: wrap; }
+.free-opp { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 10px; min-width: 110px; }
+.free-opp img { width: 56px; height: 56px; }
+.free-opp span { font-size: 15px; }
+.free-opp small { font-size: 12px; color: #666; }
+
 /* ---------- 도감 ---------- */
 .tabs { display: flex; gap: 8px; margin: 8px 0 14px; flex-wrap: wrap; }
 .tab { min-height: 48px; padding: 6px 18px; border: 3px solid var(--ink); border-radius: 12px; background: rgba(255, 255, 255, .8); font-weight: 700; font-size: 18px; }

@@ -144,6 +144,7 @@
   // 노멀 클래스 상대 순서: 이긴 수만큼 다음 상대, 4승 뒤 승급전
   const NORMAL_LINE = ["n1", "n2", "n3", "n4"];
   const NORMAL_PROMO = "korrina";
+  const NORMAL_EXTRA = ["n5", "n6", "bea"]; // 어른 모드 '상대 고르기'에만 나오는 연습 상대
   const MASTERS = ["leon", "cynthia", "lance", "diantha", "steven", "alain", "iris", "raihan"]; // 1~8위
 
   // 순위표에 나오는 이름 없는 트레이너들 (날마다 조금씩 오르내린다)
@@ -155,7 +156,7 @@
   const ROSTER_NAMES = ["민준", "서연", "도윤", "하은", "시우", "지유", "주원", "서아", "하준", "아린", "지호", "윤서", "은우", "채원", "선우", "다인",
     "유준", "수아", "건우", "예린", "우진", "소율", "현우", "나은", "준서", "하린", "로운", "지아", "태윤", "가온", "이안", "봄", "한결", "새봄", "누리", "보라"];
 
-  const Content = { PIECES, ORDER, stagesFor, BATTLES, CONCEPTS, BADGES, BADGE_ICON, CLASSES, START_RANK, NORMAL_STEPS, PROMO_RANK, TRAINERS, NORMAL_LINE, NORMAL_PROMO, MASTERS, ROSTER_CLASSES, ROSTER_NAMES };
+  const Content = { PIECES, ORDER, stagesFor, BATTLES, CONCEPTS, BADGES, BADGE_ICON, CLASSES, START_RANK, NORMAL_STEPS, PROMO_RANK, TRAINERS, NORMAL_LINE, NORMAL_PROMO, NORMAL_EXTRA, MASTERS, ROSTER_CLASSES, ROSTER_NAMES };
   root.Content = Content;
   if (typeof module !== "undefined") module.exports = Content;
 })(typeof window !== "undefined" ? window : globalThis);

@@ -210,6 +210,7 @@ function renderHome() {
       </nav>
       <footer class="foot">
         <button class="btn small ghost" data-go="parent">🔒 어른</button>
+        ${S().settings.unlockAll ? '<span class="unlock-tag">🔓 어른 모드: 모두 열림</span>' : ""}
         <span class="ver">v${esc(APP_VERSION)}<span id="updFoot"></span></span>
         ${Update.ver ? '<button class="btn small primary" data-go="update">🎁 새 버전으로 바꾸기</button>' : ""}
       </footer>
@@ -256,7 +257,14 @@ function renderSchool() {
   app().onclick = (e) => {
     if (e.target.closest('[data-v="home"]')) return renderHome();
     const pc = e.target.closest("[data-p]");
-    if (pc) { SFX.tap(); return pieceOpen(pc.dataset.p) ? startPiece(pc.dataset.p) : sayToast(L.lockedPiece); }
+    if (pc) {
+      SFX.tap();
+      const p = pc.dataset.p;
+      if (!pieceOpen(p)) return sayToast(L.lockedPiece);
+      // 모두 열기거나 이미 배운 말이면 단계를 골라 들어간다
+      if (S().settings.unlockAll || pieceDone(p)) return pickStage(p);
+      return startPiece(p);
+    }
     const lc = e.target.closest("[data-c]");
     if (lc) { SFX.tap(); return conceptOpen(lc.dataset.c) ? startConcept(lc.dataset.c) : sayToast(L.lockedLesson); }
   };
@@ -326,6 +334,15 @@ function attackedSquares(s) {
 // =====================================================================
 // 말 하나 배우기 (plan §4.1)
 // =====================================================================
+/** 단계 고르기 (모두 열기 또는 다 배운 말) */
+function pickStage(p) {
+  const PC = Ct.PIECES[p], stages = Ct.stagesFor(p), st = pieceStage(p);
+  const d = layer("modal", `<div class="win-box stage-pick"><h2><img src="${spr(PC.dex)}" alt=""> ${PC.name} (${PC.chess} ${PC.glyph})</h2>
+    <div class="stage-list">${stages.map((x, i) => `<button class="btn big ${i < st ? "done" : ""}" data-v="${i}">${i + 1}. ${esc(x.title)}${i < st ? " ✅" : ""}</button>`).join("")}</div>
+    <div class="row"><button class="btn big" data-v="close">닫기</button></div></div>`);
+  waitPick(d).then((v) => { d.remove(); if (v !== "close") startPiece(p, +v); });
+}
+
 async function startPiece(p, from) {
   const PC = Ct.PIECES[p];
   const stages = Ct.stagesFor(p);
@@ -342,7 +359,8 @@ async function startPiece(p, from) {
     else ok = await stageMissions(board, p, st);
     if (!ok) return;
     const rec = S().school[p] || (S().school[p] = { stage: 0 });
-    rec.stage = Math.max(rec.stage, idx + 1);
+    // 차례대로 해낸 단계만 기록 (어른 모드로 건너뛰어 끝낸 단계는 진도에 안 넣는다)
+    if (idx <= rec.stage) rec.stage = Math.max(rec.stage, idx + 1);
     Store.save();
     idx++;
     if (idx < stages.length) {
@@ -1094,6 +1112,8 @@ function renderLeague() {
           <button class="btn big primary" data-v="match">${S().game ? "이어서 두기 ▶" : "대결! ▶"}</button></div>`
           : `<div class="oppcard"><b>🔵 슈퍼 클래스</b><span>${esc(L.superSoon)}</span><button class="btn big primary" data-v="free">연습 대결 ▶</button></div>`}
       </div>
+      ${S().settings.unlockAll ? `<div class="free-pick"><h3 class="sec">🔓 상대 고르기 <small>(어른 모드 · 다음 상대가 아니면 연습 대결이라 순위는 그대로)</small></h3>
+        <div class="free-list">${[...Ct.NORMAL_LINE, ...Ct.NORMAL_EXTRA, Ct.NORMAL_PROMO].map((id) => { const t = Ct.TRAINERS[id]; return `<button class="btn free-opp" data-v="pick" data-id="${id}"><img src="${trn(t.sprite)}" alt=""><span>${esc(t.name)}</span><small>봇 ${t.bot}${t.promo ? " · 승급전" : ""}</small></button>`; }).join("")}</div></div>` : ""}
       <div class="ranks">
         <div><h3 class="sec">내 순위 둘레</h3><ol class="rlist">${rows}</ol></div>
         <div><h3 class="sec">🟣 마스터즈 에이트</h3><ol class="rlist">${masters}</ol></div>
@@ -1107,6 +1127,7 @@ function renderLeague() {
     if (b.dataset.v === "home") renderHome();
     if (b.dataset.v === "match") startMatch(oppId);
     if (b.dataset.v === "free") startMatch(Ct.NORMAL_LINE[Math.floor(Math.random() * 4)], true);
+    if (b.dataset.v === "pick") startMatch(b.dataset.id, b.dataset.id !== oppId);
   };
   if (S().lastRankDay !== day) {
     S().lastRankDay = day; Store.save();
@@ -1309,7 +1330,7 @@ function renderParentPage() {
       <div class="pbox"><h3>소리</h3>${opt("voice", true, "목소리 켜기")}${opt("voice", false, "목소리 끄기")} ${opt("sfx", true, "효과음 켜기")}${opt("sfx", false, "효과음 끄기")}</div>
       <div class="pbox"><h3>말 모양</h3>${opt("skin", "poke", "포켓몬")}${opt("skin", "chess", "진짜 체스 말")}</div>
       <div class="pbox"><h3>피카츄 도움 (리그)</h3>${opt("help", "auto", "자동(노멀 = 많이)")}${opt("help", "half", "반만")}${opt("help", "ask", "물을 때만")}${opt("help", "none", "혼자")}</div>
-      <div class="pbox"><h3>잠금</h3>${opt("unlockAll", false, "차례대로 열기")}${opt("unlockAll", true, "모두 열기")}</div>
+      <div class="pbox"><h3>🔓 모든 콘텐츠 열기 (어른 모드)</h3><p>켜면 모든 말·단계·수업·배지·리그 상대를 골라서 바로 할 수 있어요. 아이 기록은 그대로예요.</p>${opt("unlockAll", false, "🔒 차례대로 열기")}${opt("unlockAll", true, "🔓 모두 열기")}</div>
       <div class="pbox danger"><h3>기록 지우기</h3><p>지우려면 아래 칸에 <b>초기화</b> 라고 써 주세요.</p><input id="resetIn" autocomplete="off"><button class="btn" data-v="reset">모두 지우기</button></div>
       <p class="ver">v${esc(APP_VERSION)}</p>
     </div>`);
