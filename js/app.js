@@ -13,6 +13,16 @@ const C = window.Chess, V = window.VoiceLines, L = V.L, T = V.T, Ct = window.Con
 const sleep = (ms) => new Promise((r) => setTimeout(r, TEST ? 0 : ms));
 const app = () => $("#app");
 
+// iPad 사파리의 100vh 는 주소창·아래 막대 뒤까지 쳐서 판 아래가 잘린다 → 실제로 보이는 높이를 --vh 로 쓴다
+function setVH() {
+  const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+  document.documentElement.style.setProperty("--vh", h / 100 + "px");
+}
+setVH();
+window.addEventListener("resize", setVH);
+window.addEventListener("orientationchange", () => setTimeout(setVH, 300));
+if (window.visualViewport) window.visualViewport.addEventListener("resize", setVH);
+
 // =====================================================================
 // 저장 (localStorage 한 키)
 // =====================================================================

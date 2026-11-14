@@ -96,6 +96,8 @@
         if (moved.has(i)) h += '<span class="zzz">👣</span>';
         d.querySelector(".mk").innerHTML = h;
       }
+      // 고른 말: 통통 뛰기
+      for (const [k, d] of Object.entries(b.pieceEls)) d.classList.toggle("picked", +k === m.sel);
       const g = svg.querySelector("g");
       g.innerHTML = "";
       for (const a of m.arrows || []) {
