@@ -598,7 +598,7 @@ function runGame(o) {
         if (hintLv === 0) {
           hintsLeft--;
           if (goal.type === "stars") hintMove = School.raceBot(g, Math.random, "hard");
-          else hintMove = mateGoal ? Analyze.hintMove(g.s) : (Engine.best(g.s, 2, goal) || {}).m;
+          else hintMove = mateGoal ? (Analyze.winningEndgame(g.s) ? Analyze.mateGuideMove(g.s) : Analyze.hintMove(g.s)) : (Engine.best(g.s, 2, goal) || {}).m;
         }
         hintLv = Math.min(3, hintLv + 1);
         const h = Mentor.hint(g.s, goal, hintLv, hintMove);
@@ -654,7 +654,12 @@ function runGame(o) {
     };
     const kidMove = async (m) => {
       busy = true;
-      if (help !== "none" && mateGoal && values && valuesAt === g.hist.length) {
+      // 비기는 수(스테일메이트·앞서는데 세 번 반복) 막기 — 피카츄가 돕는 동안(마스터즈 에이트 전)은 늘
+      const dw = help !== "none" ? Mentor.drawWarn(g.s, m, g.keys) : null;
+      if (dw) {
+        const go = await preview(m, dw);
+        if (!go) { busy = false; sel = -1; draw(); return; }
+      } else if (help !== "none" && mateGoal && values && valuesAt === g.hist.length) {
         const w = Mentor.warn(g.s, m, values, help);
         if (w) {
           const go = await preview(m, w);
@@ -685,9 +690,15 @@ function runGame(o) {
       const t = C.make(g.s, m);
       await board.slide(m.from, m.to, { ghost: true });
       board.set(t, { ace });
-      board.marks({ arrows: [[w.refute.from, w.refute.to, "red"]], last: [m.from, m.to] });
-      await sleep(350);
-      await board.slide(w.refute.from, w.refute.to, { ghost: true });
+      if (w.refute) {
+        board.marks({ arrows: [[w.refute.from, w.refute.to, "red"]], last: [m.from, m.to] });
+        await sleep(350);
+        await board.slide(w.refute.from, w.refute.to, { ghost: true });
+      } else {
+        // 스테일메이트·반복: 상대 대장을 빨갛게 (갈 곳이 없어요)
+        board.marks({ last: [m.from, m.to], red: t.kings.b >= 0 ? [t.kings.b] : [] });
+        if (t.kings.b >= 0) board.flash(t.kings.b, "flash-red");
+      }
       say(w.say);
       const v = await askSide([["back", "🤔 다시 생각할래", "primary"], ["go", "그래도 둘래"]]);
       board.set(g.s, { ace });

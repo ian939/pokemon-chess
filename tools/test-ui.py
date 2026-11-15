@@ -53,7 +53,9 @@ window.__step = function () {
   if (P.kind === 'game') {
     const g = P.g;
     if (!g.over && g.s.turn === 'w') {
-      const m = P.goal.type === 'stars' ? School.raceBot(g, Math.random, 'hard') : Engine.pick(g.s, 5, P.goal);
+      // 첫 걸음 세 약속 수업에서는 아이처럼 캐슬링이 되면 한다 (안 하면 메이트로 끝나 수업이 되풀이됨)
+      const castle = /세 약속/.test((q('.stitle') || {}).textContent || '') && Chess.moves(g.s).find((x) => x.flag === 'K' || x.flag === 'Q');
+      const m = castle || (P.goal.type === 'stars' ? School.raceBot(g, Math.random, 'hard') : Engine.pick(g.s, 5, P.goal));
       P.onDown(m.from); P.onDown(m.to); return 'game';
     }
   }

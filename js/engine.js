@@ -55,8 +55,8 @@
         sc += sign * (rel === 0 && (f <= 2 || f >= 6) ? 20 : rel > 1 ? -25 : 0);
       }
     }
-    // 끝내기: 한쪽이 킹만 남으면 그 킹을 가장자리로, 우리 킹은 가까이 (메이트를 찾게)
-    if ((s.kings.w >= 0 && s.kings.b >= 0) && (wN === 0 || bN === 0) && wN !== bN) {
+    // 끝내기: 한쪽이 킹(+폰 몇 개)만 남고 크게 앞서면 그 킹을 가장자리로, 우리 킹은 가까이 (메이트를 찾게)
+    if ((s.kings.w >= 0 && s.kings.b >= 0) && Math.min(wN, bN) <= 300 && Math.abs(wN - bN) >= 500) {
       const strong = wN > bN ? "w" : "b", lone = s.kings[C.other(strong)], mine = s.kings[strong];
       const edge = 6 - CENTER[lone];
       const dist = Math.abs((lone & 7) - (mine & 7)) + Math.abs((lone >> 3) - (mine >> 3));

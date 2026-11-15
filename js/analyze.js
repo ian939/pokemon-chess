@@ -112,7 +112,36 @@
     return b ? b.m : null;
   }
 
-  const Analyze = { qs, gain, pass, hanging, freeCaptures, mateIn1, checks, threatMate, promoNext, checkers, undeveloped, moveValues, refutation, hintMove, val };
+  /**
+   * 이기는 끝내기인가: 상대(검정)가 킹 + 폰 몇 개뿐이고 흰이 ⚡5 이상 앞섬.
+   * 맞으면 { kingSquares: 상대 대장이 갈 수 있는 칸들, far: 우리 대장이 멀리 있나 }
+   */
+  function winningEndgame(s) {
+    if (s.kings.w < 0 || s.kings.b < 0) return null;
+    let bPieces = 0;
+    for (const p of s.b) if (p && p > "a" && p !== "k" && p !== "p") bPieces++;
+    if (bPieces > 0) return null;
+    if (C.material(s, "w") - C.material(s, "b") < 5) return null;
+    const t = pass(s);
+    const kingSquares = C.inCheck(t, "w") ? [] : C.moves(t).filter((m) => m.p === "k").map((m) => m.to);
+    const kw = s.kings.w, kb = s.kings.b;
+    const far = Math.max(Math.abs((kw & 7) - (kb & 7)), Math.abs((kw >> 3) - (kb >> 3))) >= 4;
+    return { kingSquares, far };
+  }
+  /** 끝내기 안내용 수: 메이트 쪽으로 몰아가는 수 (깊이 3, 스테일메이트는 0점이라 저절로 피함) */
+  function mateGuideMove(s) {
+    const b = E.best(s, 3, { type: "mate" }, { nodes: 250000 });
+    return b ? b.m : null;
+  }
+  /** 수 m 이 스테일메이트를 만드는가 */
+  function makesStalemate(s, m) {
+    const t = C.make(s, m);
+    const them = t.turn;
+    return t.kings[them] >= 0 && !C.inCheck(t) && C.moves(t).length === 0;
+  }
+
+  const Analyze = {
+    winningEndgame, mateGuideMove, makesStalemate, qs, gain, pass, hanging, freeCaptures, mateIn1, checks, threatMate, promoNext, checkers, undeveloped, moveValues, refutation, hintMove, val };
   root.Analyze = Analyze;
   if (typeof module !== "undefined") module.exports = Analyze;
 })(typeof window !== "undefined" ? window : globalThis);

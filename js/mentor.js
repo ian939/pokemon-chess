@@ -25,7 +25,11 @@
     if (mateGoal && hasKings) {
       // 1. 한 수 메이트
       const m1 = A.mateIn1(s);
-      if (m1.length) return msg("mate1", [L.mate1], { glow: m1[0].from });
+      if (m1.length) {
+        // 이기는 끝내기에서 많이 도와줄 땐 메이트 수까지 화살표로 (끝까지 안내)
+        const show = help === "full" && A.winningEndgame(s);
+        return msg("mate1", [L.mate1], { glow: m1[0].from, arrows: show ? [[C.name(m1[0].from), C.name(m1[0].to), "green"]] : [] });
+      }
       // 2. 체크 당함
       if (C.inCheck(s)) {
         const ch = A.checkers(s);
@@ -50,6 +54,11 @@
       const f = fc[0];
       return msg("canTake", [T.canTake(f.m.cap), f.undefended ? L.noGuard : L.goodTrade], { rings: [C.name(f.m.to)] });
     }
+    // 6. 이기는 끝내기 → 체크메이트까지 안내 (반 도움이면 동그라미만, 화살표는 없음)
+    if (mateGoal && hasKings) {
+      const eg = endgameGuide(s, help, ctx);
+      if (eg) return eg;
+    }
     if (help === "half") return null;
     // 7. 진화
     const pm = A.promoNext(s, "w");
@@ -66,18 +75,44 @@
         if (und.length >= 2 && s.full >= 3 && !tips.has("open2" + und.length)) { tips.add("open2" + und.length); return msg("open", [L.open2], { rings: und.map(C.name) }); }
         if (s.castle.includes("K") && und.length <= 1 && !tips.has("open3") && C.moves(s).some((m) => m.flag === "K")) { tips.add("open3"); return msg("open", [L.open3], { glow: s.kings.w }); }
       }
-      // 9. 끝내기 도움
-      const diff = C.material(s, "w") - C.material(s, "b");
-      if (diff >= 5 && C.material(s, "b") <= 2 && !tips.has("endgame" + Math.floor(s.full / 6))) {
-        tips.add("endgame" + Math.floor(s.full / 6));
-        return msg("endgame", [L.endgame], { rings: [C.name(s.kings.b)] });
-      }
     }
     // 10. 응원 (가끔)
     if (ctx.rng && ctx.rng() < 0.35) return msg("cheer", [[L.cheer1, L.cheer2, L.cheer3, L.cheer4][Math.floor(ctx.rng() * 4)]]);
     return null;
   }
 
+  /**
+   * 이기는 끝내기에서 체크메이트까지 안내 (plan §6.2-9, 사용자 요청 2026-11-15).
+   * 파란 동그라미 = 상대 대장이 도망갈 칸, 초록 화살표 = 칸을 줄이는 수 (help 'full' 일 때만 화살표).
+   * 같은 말을 매번 하지 않게: 처음 두 번은 설명, 그 뒤는 세 턴에 한 번 짧게.
+   */
+  function endgameGuide(s, help, ctx) {
+    const eg = A.winningEndgame(s);
+    if (!eg) return null;
+    const n = (ctx.egTurns = (ctx.egTurns || 0) + 1);
+    const best = help === "full" ? A.mateGuideMove(s) : null;
+    const arrows = best ? [[C.name(best.from), C.name(best.to), "green"]] : [];
+    const rings = eg.kingSquares.map(C.name);
+    let say = [];
+    if (n <= 1) say = [L.endgame, L.mateGuide];
+    else if (eg.far && !(ctx.kingTipAt > n - 4)) { ctx.kingTipAt = n; say = [L.mateKingHelp]; }
+    else if (n % 3 === 0) say = [best ? L.mateGuideArrow : L.mateGuide];
+    return msg("endgameGuide", say, { rings, arrows, glow: best ? best.from : undefined, quiet: !say.length });
+  }
+
+  /**
+   * 비기는 수 막기 (사용자 요청 2026-11-15): 스테일메이트를 만드는 수, 앞서 있는데 같은 자리를 세 번 만드는 수.
+   * keys = 지금까지의 posKey 목록. 돌려주는 값 { kind, say } 또는 null
+   */
+  function drawWarn(s, m, keys) {
+    if (s.kings.w < 0 || s.kings.b < 0) return null;
+    if (A.makesStalemate(s, m)) return { kind: "warnStalemate", say: [L.warnStalemate, L.warnAsk] };
+    if (keys && C.material(s, "w") - C.material(s, "b") >= 3) {
+      const k = C.posKey(C.make(s, m));
+      if (keys.filter((x) => x === k).length >= 2) return { kind: "warnRepeat", say: [L.warnRepeat, L.warnAsk] };
+    }
+    return null;
+  }
   /** 상대가 둔 수 m 으로 내 말이 잡혔으면 그 말 */
   function afterTheirs(before, m, after) {
     if (m.promo) return msg("theirEvolved", [L.theirEvolved]);
@@ -166,7 +201,7 @@
     return L.pinned;
   }
 
-  const Mentor = { turnStart, afterTheirs, afterMine, warn, hint, illegal };
+  const Mentor = { turnStart, endgameGuide, drawWarn, afterTheirs, afterMine, warn, hint, illegal };
   root.Mentor = Mentor;
   if (typeof module !== "undefined") module.exports = Mentor;
 })(typeof window !== "undefined" ? window : globalThis);

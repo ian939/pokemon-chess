@@ -71,5 +71,27 @@ console.log("\n리오르(폰) 설명");
   eq("빈 대각선", M.illegal(s, C.sq("e2"), C.sq("d3")), "리오르는 잡을 때만 비스듬히 갈 수 있어.");
 }
 
+console.log("\n비기는 수 막기 · 끝내기 안내");
+{
+  const s = C.parse("k7/8/1K6/2Q5/8/8/8/8 w - - 0 1");
+  eq("Qc7 = 스테일메이트 경고", (M.drawWarn(s, C.fromUci(s, "c5c7"), null) || {}).kind, "warnStalemate");
+  eq("Qc8 = 메이트, 경고 없음", M.drawWarn(s, C.fromUci(s, "c5c8"), null), null);
+  const r = M.turnStart(s, { type: "mate" }, "full", {});
+  eq("한 수 메이트 + 끝내기면 화살표까지", r.kind + " " + (r.arrows[0] || []).join(""), "mate1 c5c8green");
+  const e = C.parse("8/8/8/4k3/8/8/8/4K2Q w - - 0 1");
+  const eg = M.turnStart(e, { type: "mate" }, "full", {});
+  eq("퀸 vs 킹 → 끝내기 안내", eg && eg.kind, "endgameGuide");
+  eq("도망갈 칸 동그라미 있음", eg.rings.length > 0, true);
+  eq("초록 화살표 있음", eg.arrows.length, 1);
+  if (A.makesStalemate(e, C.fromUci(e, C.name(C.sq(eg.arrows[0][0])) + eg.arrows[0][1]))) { fail++; console.log("  FAIL 안내 수가 스테일메이트"); }
+  const half = M.turnStart(e, { type: "mate" }, "half", {});
+  eq("반 도움 = 동그라미만", half.arrows.length, 0);
+  // 반복: 앞서 있는데 같은 자리 세 번
+  let s2 = C.parse("8/8/8/4k3/8/8/8/4K2Q w - - 0 1");
+  const keys = [C.posKey(s2)];
+  for (const u of ["e1d1", "e5f5", "d1e1", "f5e5", "e1d1", "e5f5", "d1e1", "f5e5", "e1d1", "e5f5"]) { s2 = C.make(s2, C.fromUci(s2, u)); keys.push(C.posKey(s2)); }
+  eq("세 번째 같은 자리 → 반복 경고", (M.drawWarn(s2, C.fromUci(s2, "d1e1"), keys) || {}).kind, "warnRepeat");
+}
+
 console.log(fail ? `\n실패 ${fail}` : "\n모두 통과");
 process.exit(fail ? 1 : 0);
