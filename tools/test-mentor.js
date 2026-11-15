@@ -93,5 +93,18 @@ console.log("\n비기는 수 막기 · 끝내기 안내");
   eq("세 번째 같은 자리 → 반복 경고", (M.drawWarn(s2, C.fromUci(s2, "d1e1"), keys) || {}).kind, "warnRepeat");
 }
 
+console.log("\n앙파상");
+{
+  const s = C.parse("4k3/8/8/1pP5/8/8/8/4K3 w - b6 0 1");
+  const r = M.turnStart(s, { type: "mate" }, "full", {});
+  eq("앙파상 기회 알림", r && r.kind, "enPassant");
+  eq("잡히는 리오르 칸 표시", r && r.rings[0], "b5");
+  const m = C.fromUci(s, "c5b6");
+  eq("앙파상 뒤 칭찬", M.afterMine(s, m, C.make(s, m), { type: "mate" }, "full").kind, "epMine");
+  const b = C.parse("4k3/8/8/8/3Pp3/8/8/4K3 b - d3 0 1");
+  const bm = C.fromUci(b, "e4d3");
+  eq("상대 앙파상 설명", M.afterTheirs(b, bm, C.make(b, bm)).kind, "epTheirs");
+}
+
 console.log(fail ? `\n실패 ${fail}` : "\n모두 통과");
 process.exit(fail ? 1 : 0);

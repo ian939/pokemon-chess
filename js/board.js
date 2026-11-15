@@ -122,13 +122,32 @@
     b.slide = function (from, to, opt) {
       const d = b.pieceEls[from];
       if (!d) return Promise.resolve();
-      const victim = b.pieceEls[to];
+      let victim = b.pieceEls[to];
+      // 앙파상: 폰이 빈 칸으로 비스듬히 가면, 잡히는 폰은 내려앉는 칸이 아니라 '지나친 칸'(출발 줄 · 도착 칸) 에 있다
+      let ep = -1;
+      const pc = b.state && b.state.b[from];
+      if (!victim && pc && pc.toUpperCase() === "P" && (from & 7) !== (to & 7)) {
+        ep = (from & ~7) | (to & 7);
+        victim = b.pieceEls[ep];
+      }
       const { x, y } = pos(to);
       d.classList.add("moving");
       if (opt && opt.ghost) d.classList.add("ghost");
       d.style.transform = `translate(${x * 100}%, ${y * 100}%)`;
       if (victim && victim !== d) victim.classList.add("caught");
-      const ms = root.TEST ? 10 : 280;
+      if (ep >= 0 && victim) {
+        // 잡히는 리오르를 빨갛게 번쩍 + 내려앉은 칸에서 그쪽으로 빨간 화살표 (잠깐 뒤 다음 그리기 때 사라짐)
+        b.flash(ep, "flash-red");
+        const g = svg.querySelector("g");
+        const p1 = pos(to), p2 = pos(ep);
+        const line = document.createElementNS(svgNS, "line");
+        line.setAttribute("x1", p1.x + 0.5); line.setAttribute("y1", p1.y + 0.5);
+        line.setAttribute("x2", p2.x + 0.5); line.setAttribute("y2", p2.y + 0.5 - (p2.y > p1.y ? 0.3 : -0.3));
+        line.setAttribute("stroke", "#e5484d"); line.setAttribute("stroke-width", "0.17"); line.setAttribute("stroke-linecap", "round");
+        line.setAttribute("marker-end", "url(#ahR)");
+        g.appendChild(line);
+      }
+      const ms = root.TEST ? 10 : ep >= 0 ? 650 : 280;
       return new Promise((r) => setTimeout(r, ms));
     };
     b.shake = function (sq) {

@@ -53,7 +53,7 @@ def collect():
     for (const b of Ct.BADGES) ko.add(b.say);
     const man = new Set();
     const MEN = ['n1', 'n3', 'n4', 'n6', 'volkner', 'raihan', 'steven', 'leon'];
-    for (const [id, t] of Object.entries(Ct.TRAINERS)) for (const x of [t.hello, t.bye]) if (x) (MEN.includes(id) ? man : ko).add(x);
+    for (const [id, t] of Object.entries(Ct.TRAINERS)) for (const x of [t.hello, t.bye, t.win]) if (x) (MEN.includes(id) ? man : ko).add(x);
     console.log(JSON.stringify({ ko: [...ko], man: [...man] }));
     """
     r = subprocess.run(["node", "-e", js], cwd=ROOT, capture_output=True, text=True, encoding="utf-8")

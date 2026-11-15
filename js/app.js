@@ -1109,7 +1109,8 @@ function renderLeague() {
   const lg = S().league;
   const day = today();
   const cls = Ct.CLASSES.find((c) => c.id === lg.cls);
-  const bd = Ranking.board(day, { rank: lg.rank, name: S().name, wins: lg.wins });
+  const me = { rank: lg.rank, name: S().name, wins: lg.wins, rivalBeat: !!lg.rivalBeat, rivalBeatDay: lg.rivalBeatDay };
+  const bd = Ranking.board(day, me);
   const oppId = nextOpponent();
   const opp = oppId && Ct.TRAINERS[oppId];
   const rows = bd.near.map((x) => `<li class="${x.me ? "me" : ""} ${x.rival ? "rival" : ""}"><span class="rk">${x.rank.toLocaleString()}위</span>${x.me ? `<img src="${trn("ash")}" alt="">` : `<img src="${trn(x.sprite)}" alt="">`}<b>${esc(x.name)}</b>${x.rival ? "<em>라이벌</em>" : ""}</li>`).join("");
@@ -1119,7 +1120,7 @@ function renderLeague() {
       <div class="topbar"><button class="btn icon" data-v="home" aria-label="뒤로">◀</button><h2>🏆 월드 챔피언십</h2></div>
       <div class="league-top">
         <div class="mycard"><img src="${trn("ash")}" alt=""><div><small>${cls.ball} ${cls.name}</small><b class="myrank">${lg.rank.toLocaleString()}위</b><span>${lg.wins}승 ${lg.losses}패 ${lg.draws}무</span></div></div>
-        ${opp ? `<div class="oppcard"><small>${opp.promo ? "⭐ 승급전" : `다음 상대 (${lg.wins + 1}/${Ct.NORMAL_LINE.length})`}</small><img src="${trn(opp.sprite)}" alt=""><b>${esc(opp.name)}</b><span>대장 ${esc(opp.aceName)} <img src="${spr(opp.ace)}" alt=""></span>
+        ${opp ? `<div class="oppcard"><small>${opp.promo ? "⭐ 승급전" : opp.rival ? `⚔️ 라이벌전! (${lg.wins + 1}/${Ct.NORMAL_LINE.length})` : `다음 상대 (${lg.wins + 1}/${Ct.NORMAL_LINE.length})`}</small><img src="${trn(opp.sprite)}" alt=""><b>${esc(opp.name)}</b><span>대장 ${esc(opp.aceName)} <img src="${spr(opp.ace)}" alt=""></span>
           <button class="btn big primary" data-v="match">${S().game ? "이어서 두기 ▶" : "대결! ▶"}</button></div>`
           : `<div class="oppcard"><b>🔵 슈퍼 클래스</b><span>${esc(L.superSoon)}</span><button class="btn big primary" data-v="free">연습 대결 ▶</button></div>`}
       </div>
@@ -1129,7 +1130,7 @@ function renderLeague() {
         <div><h3 class="sec">내 순위 둘레</h3><ol class="rlist">${rows}</ol></div>
         <div><h3 class="sec">🟣 마스터즈 에이트</h3><ol class="rlist">${masters}</ol></div>
       </div>
-      <div class="news-box"><h3 class="sec">📰 오늘의 순위 소식</h3>${Ranking.news(day, { rank: lg.rank, name: S().name, wins: lg.wins }).map((n) => `<p>${esc(n)}</p>`).join("")}</div>
+      <div class="news-box"><h3 class="sec">📰 오늘의 순위 소식</h3>${Ranking.news(day, me).map((n) => `<p>${esc(n)}</p>`).join("")}</div>
     </div>`);
   app().onclick = (e) => {
     const b = e.target.closest("[data-v]");
@@ -1149,12 +1150,12 @@ async function startMatch(oppId, practice) {
   const tr = Ct.TRAINERS[oppId];
   const lg = S().league;
   const saved = S().game && S().game.trainer === oppId ? S().game : null;
-  const board = playScreen({ title: `${tr.promo ? "⭐ 승급전 · " : ""}vs ${tr.name}`, onExit: renderLeague });
+  const board = playScreen({ title: `${tr.promo ? "⭐ 승급전 · " : tr.rival ? "⚔️ 라이벌전 · " : ""}vs ${tr.name}`, onExit: renderLeague });
   board.set(C.parse(C.START), { ace: tr.ace });
   board.marks({});
   if (!saved) {
-    setInfo(`<div class="vs"><img src="${trn("ash")}" alt=""><b>VS</b><img src="${trn(tr.sprite)}" alt=""></div><p class="tr-line">“${esc(tr.hello)}”</p>`);
-    say([tr.hello]);
+    setInfo(`${tr.rival ? `<div class="rival-banner">⚔️ 라이벌전 ⚔️</div>` : ""}<div class="vs"><img src="${trn("ash")}" alt=""><b>VS</b><img src="${trn(tr.sprite)}" alt=""></div><p class="tr-line">“${esc(tr.hello)}”</p>`);
+    say(tr.rival ? [L.rivalIntro, tr.hello] : [tr.hello]);
     if (!(await askSide([["go", "대결 시작! ▶", "primary"]]))) return;
   }
   const lossStreak = lg.lossStreak || 0;
@@ -1180,15 +1181,20 @@ async function afterMatch(tr, oppId, r, practice) {
       else { lg.rank = Ct.NORMAL_STEPS[Math.min(lg.wins, Ct.NORMAL_STEPS.length - 1)]; }
       lg.wins++;
       if (!lg.beaten.includes(oppId)) lg.beaten.push(oppId);
+      if (tr.rival) { lg.rivalBeat = true; lg.rivalBeatDay = today(); }
       S().moments.push({ fen: C.fen(r.g.s), title: `${tr.name}에게 승리!`, at: Date.now() });
     } else if (r.winner === "b") { lg.losses++; lg.lossStreak = (lg.lossStreak || 0) + 1; }
     else lg.draws++;
     Store.save();
   }
   // 순위 변동 연출
-  const passed = Ranking.passed(today(), old, lg.rank, lg.wins - 1);
+  let passed = Ranking.passed(today(), old, lg.rank, lg.wins - 1);
+  const rivalWin = !practice && tr.rival && r.winner === "w";
+  if (rivalWin) passed = [{ id: "bea", name: "채두", sprite: "bea", rival: true }, ...passed.filter((x) => !x.rival)];
+  const trLine = r.winner === "w" ? tr.bye : r.winner === "b" ? tr.win : null;
   const d = layer("modal", `<div class="win-box rank-box">
-      <h2>${r.winner === "w" ? "🎉 승리!" : r.winner === "b" ? "😢 아쉬워요" : "🤝 비겼어요"}</h2>
+      <h2>${r.winner === "w" ? (rivalWin ? "⚔️ 라이벌 채두를 이겼어요!" : "🎉 승리!") : r.winner === "b" ? "😢 아쉬워요" : "🤝 비겼어요"}</h2>
+      ${trLine ? `<p class="tr-say"><img src="${trn(tr.sprite)}" alt=""> “${esc(trLine)}”</p>` : ""}
       <div class="rank-roll"><small>세계 순위</small><b id="rollNum">${old.toLocaleString()}</b><span>위</span></div>
       <p id="rollMsg">${lg.rank < old ? `${(old - lg.rank).toLocaleString()}계단 올랐어요!` : esc(L.rankSame)}</p>
       <ul class="passed">${passed.slice(0, 5).map((x) => `<li><img src="${trn(x.sprite)}" alt=""> ${esc(x.name)} ${x.rival ? "<em>라이벌!</em>" : ""} ⬇</li>`).join("")}${passed.length > 5 ? `<li>…그리고 ${passed.length - 5}명 더!</li>` : ""}</ul>
@@ -1203,7 +1209,7 @@ async function afterMatch(tr, oppId, r, practice) {
       if (k < 1) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
-    Voice.speak([promoted ? L.promoClass : L.rankUp]);
+    Voice.speak(rivalWin ? [L.rivalWin, tr.bye] : [promoted ? L.promoClass : L.rankUp]);
   }
   await waitPick(d);
   d.remove();

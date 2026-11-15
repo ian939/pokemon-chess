@@ -119,7 +119,7 @@
     { id: "master", name: "마스터 클래스", ball: "🟣", top: 1, open: false },
   ];
   const START_RANK = 3200;
-  const NORMAL_STEPS = [2650, 2100, 1600, 1150]; // 노멀에서 이길 때마다 순위 (4승)
+  const NORMAL_STEPS = [2700, 2300, 1800, 1450, 1150]; // 노멀에서 이길 때마다 순위 (5승, 3번째 = 라이벌전이라 크게)
   const PROMO_RANK = 999;
 
   const TRAINERS = {
@@ -130,7 +130,7 @@
     n5: { name: "피크닉걸 소라", sprite: "picnicker", ace: 52, aceName: "나옹", bot: 2, hello: "나옹이 반짝반짝 응원해 줄 거야!", bye: "너한테 많이 배웠어!" },
     n6: { name: "수영선수 바다", sprite: "swimmer", ace: 129, aceName: "잉어킹", bot: 2, hello: "잉어킹을 얕보면 안 돼!", bye: "잉어킹도 언젠가 갸라도스가 될 거야!" },
     korrina: { name: "코르니", sprite: "korrina", ace: 701, aceName: "루차불", bot: 3, promo: true, hello: "승급전이야! 공짜 말은 절대 안 놓쳐!", bye: "대단해! 슈퍼 클래스에서 만나자!" },
-    bea: { name: "채두", sprite: "bea", ace: 68, aceName: "괴력몬", bot: 3, rival: true, hello: "너도 챔피언을 노리는구나. 지지 않아!", bye: "…좋은 승부였다. 다음엔 내가 이긴다." },
+    bea: { name: "채두", sprite: "bea", ace: 68, aceName: "괴력몬", bot: 2, rival: true, hello: "너도 챔피언을 노리는구나. 라이벌 승부다! 지지 않아!", bye: "…좋은 승부였다. 다음엔 내가 이긴다.", win: "후후, 이번엔 내가 이겼다. 다시 도전해!" },
     volkner: { name: "전진", sprite: "volkner", ace: 466, aceName: "에레키블", bot: 4, promo: true },
     marnie: { name: "마리", sprite: "marnie", ace: 861, aceName: "오롱털", bot: 4 },
     iris: { name: "아이리스", sprite: "iris", ace: 612, aceName: "액스라이즈", bot: 5 },
@@ -143,9 +143,9 @@
     alain: { name: "알랭", sprite: "alain", ace: 248, aceName: "마기라스" },
   };
   // 노멀 클래스 상대 순서: 이긴 수만큼 다음 상대, 4승 뒤 승급전
-  const NORMAL_LINE = ["n1", "n2", "n3", "n4"];
+  const NORMAL_LINE = ["n1", "n2", "bea", "n3", "n4"]; // 가운데 = 라이벌 채두와의 라이벌전 (사용자 요청 2026-11-15)
   const NORMAL_PROMO = "korrina";
-  const NORMAL_EXTRA = ["n5", "n6", "bea"]; // 어른 모드 '상대 고르기'에만 나오는 연습 상대
+  const NORMAL_EXTRA = ["n5", "n6"]; // 어른 모드 '상대 고르기'에만 나오는 연습 상대
   const MASTERS = ["leon", "cynthia", "lance", "diantha", "steven", "alain", "iris", "raihan"]; // 1~8위
 
   // 순위표에 나오는 이름 없는 트레이너들 (날마다 조금씩 오르내린다)

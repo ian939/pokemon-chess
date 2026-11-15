@@ -39,6 +39,14 @@
       const tm = A.threatMate(s);
       if (tm.length) return msg("threatMate", [L.threatMate], { arrows: [[C.name(tm[0].from), C.name(tm[0].to), "red"]] });
     }
+    // 3-1. 앙파상 기회 (바로 이번 수에만): 손해가 아니면 알려 준다 — 빈칸으로 잡는 거라 '공짜 잡기' 보다 먼저 설명
+    if (help !== "ask") {
+      const ep = C.moves(s).find((m) => m.flag === "ep" && A.gain(s, m) >= 0);
+      if (ep) {
+        const victim = (ep.from & ~7) | (ep.to & 7);
+        return msg("enPassant", [L.epChance1, L.epChance2], { arrows: [[C.name(ep.from), C.name(ep.to), "green"]], rings: [C.name(victim)] });
+      }
+    }
     // 4. 내 말이 위험 — 단, 노리는 상대를 공짜로 먼저 잡을 수 있으면 그걸 말한다
     const hang = A.hanging(s, "w");
     const fc0 = A.freeCaptures(s);
@@ -115,6 +123,7 @@
   }
   /** 상대가 둔 수 m 으로 내 말이 잡혔으면 그 말 */
   function afterTheirs(before, m, after) {
+    if (m.flag === "ep") return msg("epTheirs", [L.epTheirs]);
     if (m.promo) return msg("theirEvolved", [L.theirEvolved]);
     if (m.cap && m.cap !== "k") return msg("lost", [T.lost(m.cap)]);
     return null;
@@ -124,6 +133,7 @@
   function afterMine(before, m, after, goal, help) {
     if (help === "none") return null;
     if (m.promo) return msg("evolved", [L.evolved]);
+    if (m.flag === "ep") return msg("epMine", [L.epMine]);
     if (m.cap && A.gain(before, m) >= 1) return msg("took", [T.took(m.cap)]);
     if (after.kings.b >= 0 && C.inCheck(after)) return msg("gaveCheck", [L.gaveCheck]);
     if (help !== "full") return null;

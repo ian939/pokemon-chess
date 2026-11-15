@@ -34,14 +34,15 @@
     return masters.concat(list);
   }
   /** 라이벌 채두의 순위 */
-  function rival(day, myRank, wins) {
-    const k = Math.sin(day * 1.3 + wins * 2.1) * 0.09 + Math.sin(day * 0.37) * 0.02;
+  function rival(day, myRank, wins, beat) {
+    let k = Math.sin(day * 1.3 + wins * 2.1) * 0.09 + Math.sin(day * 0.37) * 0.02;
+    if (beat) k = Math.abs(k) * 0.6 + 0.02; // 라이벌전에서 이긴 뒤엔 내 바로 뒤에서 따라온다
     return Math.max(9, Math.round(myRank * (1 + k)) + (k === 0 ? 1 : 0));
   }
   /** 내 둘레 순위표: 위 4명, 나, 아래 4명 (라이벌 포함) */
   function board(day, me) {
     const all = today(day).filter((x) => !x.master);
-    const rv = { id: "bea", name: "채두", sprite: "bea", rank: rival(day, me.rank, me.wins), rival: true };
+    const rv = { id: "bea", name: "채두", sprite: "bea", rank: rival(day, me.rank, me.wins, me.rivalBeat), rival: true };
     if (rv.rank === me.rank) rv.rank += 1;
     const pool = all.filter((x) => x.rank !== rv.rank && x.rank !== me.rank).concat([rv]);
     pool.sort((a, b) => a.rank - b.rank);
@@ -60,8 +61,9 @@
   function news(day, me) {
     const rng = E.mulberry(day * 31 + 7);
     const all = today(day).filter((x) => !x.master);
-    const rv = rival(day, me.rank, me.wins), rvY = rival(day - 1, me.rank, me.wins);
+    const rv = rival(day, me.rank, me.wins, me.rivalBeat), rvY = rival(day - 1, me.rank, me.wins, me.rivalBeat);
     const out = [];
+    if (me.rivalBeat && me.rivalBeatDay === day) out.push(`라이벌전 결과: ${V.I(me.name)} 채두를 이겼어요! 채두가 "다음엔 내가 이긴다"며 연습하러 갔대요.`);
     if (rv < me.rank && rvY >= me.rank) out.push(`채두가 ${V.UL(me.name)} 앞질렀어요! 다시 따라잡아 볼까요?`);
     else if (rv > me.rank && rvY <= me.rank) out.push(`${V.I(me.name)} 채두를 앞질렀어요! 채두가 이를 갈고 있어요.`);
     else if (rv < rvY) out.push(`채두가 ${1 + Math.floor(rng() * 3)}연승! ${rv.toLocaleString()}위로 올라갔어요.`);
