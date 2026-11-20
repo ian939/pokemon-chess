@@ -186,6 +186,36 @@ def main():
         drive(lambda: page.evaluate("document.querySelector('.league') !== null"), name="league-after")
         shot("league-after")
 
+        # 4-1) 슈퍼 → 하이퍼 → 마스터즈 → 챔피언 (2026-11-20): 기술 수업 5개는 실제로 풀고,
+        #      슈퍼에서 진짜 한 판, 나머지 상대는 이긴 결과를 넣어 승급·토너먼트·챔피언 흐름을 본다
+        page.evaluate("Object.assign(__T.Store.data.league, { cls: 'super', rank: 999, clsWins: 0 }); __T.Store.data.game = null; __T.renderLeague()")
+        shot("super-gate")
+        first_real = True
+        for cls, techs in [("super", ["T1", "T2"]), ("hyper", ["T3", "T4"]), ("master", ["T5"])]:
+            for tid in techs:
+                page.click(f'[data-v="tech"][data-id="{tid}"]')
+                page.wait_for_timeout(50)
+                drive(lambda: page.evaluate("!!document.querySelector('.league')"), name="tech-" + tid)
+                assert page.evaluate(f"!!__T.Store.data.concepts['{tid}']"), tid
+            if first_real:
+                first_real = False
+                page.click('[data-v="match"]')
+                page.wait_for_timeout(50)
+                drive(lambda: page.evaluate("!!document.querySelector('.rank-box') || !!document.querySelector('.league')"), name="super-game", limit=6000)
+                drive(lambda: page.evaluate("!!document.querySelector('.league')"), name="super-after")
+            while page.evaluate("__T.league().cls") == cls:
+                page.evaluate("""(() => { const lg = __T.league(), L0 = Content.LEAGUE[lg.cls];
+                  const id = L0.tournament ? L0.tournament[lg.clsWins] : lg.clsWins >= L0.line.length ? L0.promo : L0.line[lg.clsWins];
+                  void __T.afterMatch(Content.TRAINERS[id], id, { winner: 'w', g: { s: Chess.parse(Chess.START) }, review: [] }, false); })()""")
+                page.wait_for_timeout(80)
+                page.click('.rank-box [data-v="next"]')
+                page.wait_for_timeout(80)
+            lg = page.evaluate("__T.league()")
+            print(f"{cls} 끝 → {lg['cls']} {lg['rank']}위")
+        assert page.evaluate("__T.league().cls") == "champion"
+        page.evaluate("__T.renderLeague()")
+        shot("champion")
+
         # 5) 도감 · 어른 화면
         for tab in ["pieces", "trainers", "badges", "moments"]:
             page.evaluate(f"__T.renderDex('{tab}')")

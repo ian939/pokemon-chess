@@ -75,7 +75,12 @@
     this.opt = opt;
     this.nodes = 0;
     this.limit = opt.nodes || 400000;
+    this.deadline = opt.deadline || 0; // Date.now() 기준 끝낼 시각 (0 = 없음)
   }
+  Searcher.prototype.tick = function () {
+    if (++this.nodes > this.limit) throw new Abort();
+    if (this.deadline && (this.nodes & 511) === 0 && Date.now() > this.deadline) throw new Abort();
+  };
   Searcher.prototype.ev = function (s) {
     const v = evaluate(s, this.goal, this.opt);
     return s.turn === "w" ? v : -v;
@@ -93,7 +98,7 @@
     return r === s.turn ? WIN - ply : -WIN + ply;
   };
   Searcher.prototype.qs = function (s, a, b, ply, qd) {
-    if (++this.nodes > this.limit) throw new Abort();
+    this.tick();
     const stand = this.ev(s);
     if (qd >= 6) return stand;
     if (stand >= b) return stand;
@@ -109,7 +114,7 @@
     return a;
   };
   Searcher.prototype.nega = function (s, d, a, b, ply) {
-    if (++this.nodes > this.limit) throw new Abort();
+    this.tick();
     const ms = C.moves(s, { promos: "Q" });
     if (!ms.length) return this.noMoves(s, ply);
     if (this.goal.type === "mate" && s.half >= 100) return 0;
@@ -126,14 +131,25 @@
     }
     return best;
   };
-  /** 뿌리의 모든 수에 점수를 매긴다 (창을 열어 두므로 각 수의 값이 정확하다) */
-  Searcher.prototype.scoreAll = function (s, d, ms) {
-    ms = order(ms || C.moves(s, { promos: "Q" }));
+  /**
+   * 뿌리의 모든 수에 점수를 매긴다.
+   * cap 이 없으면 창을 열어 두어 각 수의 값이 정확하다 (멘토 분석용).
+   * cap 이 있으면 '지금까지 가장 좋은 수 - cap' 보다 나쁜 수는 거기서 자른다 (봇용: 실수 후보만 정확하면 됨 → 훨씬 빠름).
+   * keepOrder 면 주어진 순서(앞 깊이의 결과)대로 본다.
+   */
+  Searcher.prototype.scoreAll = function (s, d, ms, cap, keepOrder) {
+    ms = ms || C.moves(s, { promos: "Q" });
+    if (!keepOrder) ms = order(ms);
     const out = [];
+    let best = -Infinity;
     for (const m of ms) {
       const t = C.make(s, m);
       let v = this.imm(t, m, 0);
-      if (v === null) v = d <= 1 ? -this.qs(t, -WIN - 1, WIN + 1, 1, 0) : -this.nega(t, d - 1, -WIN - 1, WIN + 1, 1);
+      if (v === null) {
+        const lo = cap == null || best === -Infinity ? -WIN - 1 : best - cap - 1;
+        v = d <= 1 ? -this.qs(t, -WIN - 1, -lo, 1, 0) : -this.nega(t, d - 1, -WIN - 1, -lo, 1);
+      }
+      if (v > best) best = v;
       out.push({ m, v });
     }
     return out.sort((x, y) => y.v - x.v);
@@ -182,7 +198,7 @@
    * 봇이 둘 수를 고른다.
    * @param level 1~8, goal 판 목표, rng 난수 함수
    */
-  function pick(s, level, goal, rng) {
+  function pick(s, level, goal, rng, opt) {
     rng = rng || Math.random;
     goal = goal || { type: "mate" };
     let ms = C.moves(s, { promos: "Q" });
@@ -207,9 +223,18 @@
     if (L.blind && rng() < L.blind) {
       scored = ms.map((m) => ({ m, v: liteGain(s, m) + rng() * 30 })).sort((a, b) => b.v - a.v);
     } else {
-      const S = new Searcher(goal, { pst: L.pst !== false, nodes: 250000 });
-      try { scored = S.scoreAll(s, L.depth || 1, ms); }
-      catch (e) { if (!(e instanceof Abort)) throw e; scored = new Searcher(goal, { pst: L.pst !== false }).scoreAll(s, 1, ms); }
+      // 깊이를 1 부터 늘려 가며(앞 결과 순서대로) 생각할 시간 안에 끝난 가장 깊은 결과를 쓴다
+      const budget = (opt && opt.budget) || 1500;
+      const deadline = Date.now() + budget;
+      const cap = (L.cap || 0) + 40;
+      let order0 = ms;
+      for (let d = 1; d <= (L.depth || 1); d++) {
+        const S = new Searcher(goal, { pst: L.pst !== false, nodes: 2000000, deadline: d === 1 ? 0 : deadline });
+        try { scored = S.scoreAll(s, d, order0, cap, d > 1); }
+        catch (e) { if (!(e instanceof Abort)) throw e; break; }
+        order0 = scored.map((x) => x.m);
+        if (Date.now() > deadline) break;
+      }
       // 같은 점수끼리는 섞는다 (매번 같은 판이 되지 않게)
       scored.forEach((x) => (x.v += rng() * 12));
       scored.sort((a, b) => b.v - a.v);

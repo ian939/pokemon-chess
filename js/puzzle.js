@@ -34,6 +34,9 @@
         return C.inCheck(C.make(s, m)) ? { ok: true, how: "check" } : { ok: false, how: "noCheck" };
       case "escape":
         return { ok: true, how: escapeHow(s, m) };
+      case "answers": // 기술 퍼즐: 엔진이 미리 구한 정답 수
+      case "mate2": // 두 수 메이트의 첫 수 (두 번째 수는 'mate' 로 따로 본다)
+        return (p.answers || []).includes(C.uci(m)) ? { ok: true, how: p.kind || "answers" } : { ok: false, how: "notBest" };
       case "mate":
         return C.inCheck(C.make(s, m)) && C.moves(C.make(s, m)).length === 0 ? { ok: true, how: "mate" } : { ok: false, how: C.inCheck(C.make(s, m)) ? "onlyCheck" : "noMate" };
       default:

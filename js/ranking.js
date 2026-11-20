@@ -41,6 +41,12 @@
   }
   /** 내 둘레 순위표: 위 4명, 나, 아래 4명 (라이벌 포함) */
   function board(day, me) {
+    if (me.rank <= 8) {
+      // 마스터즈 에이트 안: 금랑은 9위로 밀리고, 나머지 일곱 명 사이에 아이가 들어간다 (단독 목록)
+      const ms = Ct.MASTERS.filter((x) => x !== "raihan").map((id) => ({ id, name: Ct.TRAINERS[id].name, sprite: Ct.TRAINERS[id].sprite, master: true }));
+      ms.splice(me.rank - 1, 0, { id: "me", name: me.name, me: true });
+      return { near: ms.map((x, i) => Object.assign(x, { rank: i + 1 })), masters: [], rival: null };
+    }
     const all = today(day).filter((x) => !x.master);
     const rv = { id: "bea", name: "채두", sprite: "bea", rank: rival(day, me.rank, me.wins, me.rivalBeat), rival: true };
     if (rv.rank === me.rank) rv.rank += 1;

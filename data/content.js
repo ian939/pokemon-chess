@@ -114,9 +114,10 @@
   // ---------- 월드 챔피언십 (plan §7) ----------
   const CLASSES = [
     { id: "normal", name: "노멀 클래스", ball: "⚪", top: 1000, open: true },
-    { id: "super", name: "슈퍼 클래스", ball: "🔵", top: 100, open: false },
-    { id: "hyper", name: "하이퍼 클래스", ball: "🟡", top: 9, open: false },
-    { id: "master", name: "마스터 클래스", ball: "🟣", top: 1, open: false },
+    { id: "super", name: "슈퍼 클래스", ball: "🔵", top: 100, open: true },
+    { id: "hyper", name: "하이퍼 클래스", ball: "🟡", top: 9, open: true },
+    { id: "master", name: "마스터즈 에이트", ball: "🟣", top: 1, open: true },
+    { id: "champion", name: "월드 챔피언", ball: "👑", top: 1, open: true },
   ];
   const START_RANK = 3200;
   const NORMAL_STEPS = [2700, 2300, 1800, 1450, 1150]; // 노멀에서 이길 때마다 순위 (5승, 3번째 = 라이벌전이라 크게)
@@ -131,13 +132,22 @@
     n6: { name: "수영선수 바다", sprite: "swimmer", ace: 129, aceName: "잉어킹", bot: 2, hello: "잉어킹을 얕보면 안 돼!", bye: "잉어킹도 언젠가 갸라도스가 될 거야!" },
     korrina: { name: "코르니", sprite: "korrina", ace: 701, aceName: "루차불", bot: 3, promo: true, hello: "승급전이야! 공짜 말은 절대 안 놓쳐!", bye: "대단해! 슈퍼 클래스에서 만나자!" },
     bea: { name: "채두", sprite: "bea", ace: 68, aceName: "괴력몬", bot: 2, rival: true, hello: "너도 챔피언을 노리는구나. 라이벌 승부다! 지지 않아!", bye: "…좋은 승부였다. 다음엔 내가 이긴다.", win: "후후, 이번엔 내가 이겼다. 다시 도전해!" },
-    volkner: { name: "전진", sprite: "volkner", ace: 466, aceName: "에레키블", bot: 4, promo: true },
-    marnie: { name: "마리", sprite: "marnie", ace: 861, aceName: "오롱털", bot: 4 },
-    iris: { name: "아이리스", sprite: "iris", ace: 612, aceName: "액스라이즈", bot: 5 },
-    raihan: { name: "금랑", sprite: "raihan", ace: 884, aceName: "두랄루돈", bot: 6, promo: true },
-    steven: { name: "성호", sprite: "steven", ace: 376, aceName: "메타그로스", bot: 6 },
-    cynthia: { name: "난천", sprite: "cynthia", ace: 445, aceName: "한카리아스", bot: 7 },
-    leon: { name: "단델", sprite: "leon", ace: 6, aceName: "리자몽", bot: 8 },
+    // 슈퍼 클래스
+    s1: { name: "엘리트 트레이너 지훈", sprite: "acetrainer", ace: 59, aceName: "윈디", bot: 3, hello: "슈퍼 클래스에 온 걸 환영해. 실력 좀 볼까?", bye: "제법인데? 계속 올라가 봐!", win: "아직은 내가 한 수 위야. 다시 와!" },
+    s2: { name: "엘리트 트레이너 소희", sprite: "acetrainerf", ace: 131, aceName: "라프라스", bot: 3, hello: "라프라스처럼 차분하게 둘 거야.", bye: "멋진 수였어! 축하해.", win: "서두르면 안 돼. 다시 해 봐!" },
+    bea2: { name: "채두", sprite: "bea", ace: 68, aceName: "괴력몬", bot: 3, rival: true, hello: "슈퍼 클래스에서 또 만났군. 이번엔 더 강해졌다!", bye: "…또 졌다. 하지만 포기하지 않아!", win: "이번엔 내 차례였다. 다시 붙자!" },
+    s3: { name: "등산가 우람", sprite: "hiker", ace: 76, aceName: "딱구리", bot: 4, hello: "산처럼 단단하게 지킬 거다!", bye: "우와, 산이 무너졌네! 대단해!", win: "아직 산은 높아! 다시 올라와!" },
+    volkner: { name: "전진", sprite: "volkner", ace: 466, aceName: "에레키블", bot: 4, promo: true, hello: "승급전이다. 공짜 말은 한 개도 안 준다.", bye: "짜릿했다! 하이퍼 클래스로 가라!", win: "아직 전기가 부족해. 다시 도전해!" },
+    // 하이퍼 클래스
+    marnie: { name: "마리", sprite: "marnie", ace: 861, aceName: "오롱털", bot: 4, hello: "하이퍼 클래스는 만만하지 않아. 준비됐지?", bye: "…강하네. 인정할게.", win: "다음엔 더 잘할 수 있을 거야." },
+    iris: { name: "아이리스", sprite: "iris", ace: 612, aceName: "액스라이즈", bot: 5, hello: "드래곤처럼 힘차게 가 볼까!", bye: "와아, 너 진짜 세다!", win: "히히, 이번엔 내가 이겼다!" },
+    bea3: { name: "채두", sprite: "bea", ace: 68, aceName: "괴력몬", bot: 5, rival: true, hello: "하이퍼 클래스 라이벌전! 이번이 진짜 결판이다!", bye: "…너는 진짜 라이벌이다. 마스터즈 에이트에서 기다려라!", win: "후, 아직 내가 앞서 있다. 다시 와!" },
+    gary: { name: "오바람", sprite: "blue", ace: 9, aceName: "거북왕", bot: 5, hello: "흥, 내가 바로 오바람이다. 쉽게 안 질걸?", bye: "쳇, 제법이군. 인정해 주지!", win: "하하, 아직 멀었다고!" },
+    raihan: { name: "금랑", sprite: "raihan", ace: 884, aceName: "두랄루돈", bot: 6, promo: true, hello: "마스터즈 에이트로 가는 마지막 문이다. 날 넘어 봐!", bye: "멋지다! 마스터즈 에이트 자리는 네 거야!", win: "아직 문은 안 열렸어. 다시 도전해!" },
+    // 마스터즈 에이트 토너먼트
+    steven: { name: "성호", sprite: "steven", ace: 376, aceName: "메타그로스", bot: 6, hello: "8강전이다. 단단한 강철처럼 지키겠다.", bye: "훌륭하다. 4강에서도 힘내라.", win: "강철은 쉽게 부서지지 않는다. 다시 오너라." },
+    cynthia: { name: "난천", sprite: "cynthia", ace: 445, aceName: "한카리아스", bot: 7, hello: "4강전이야. 실수는 기다려 주지 않아.", bye: "정말 강해졌구나. 결승에서 단델을 만나렴.", win: "좋은 승부였어. 한 번 더 해 볼래?" },
+    leon: { name: "단델", sprite: "leon", ace: 6, aceName: "리자몽", bot: 8, hello: "결승전이다! 챔피언 타임을 즐겨 보자!", bye: "최고의 승부였다! 이제 네가 챔피언이다!", win: "챔피언 자리는 쉽게 안 내준다! 다시 도전해!" },
     lance: { name: "목호", sprite: "lance", ace: 130, aceName: "갸라도스" },
     diantha: { name: "카르네", sprite: "diantha", ace: 282, aceName: "가디안" },
     alain: { name: "알랭", sprite: "alain", ace: 248, aceName: "마기라스" },
@@ -148,6 +158,48 @@
   const NORMAL_EXTRA = ["n5", "n6"]; // 어른 모드 '상대 고르기'에만 나오는 연습 상대
   const MASTERS = ["leon", "cynthia", "lance", "diantha", "steven", "alain", "iris", "raihan"]; // 1~8위
 
+  /**
+   * 클래스마다 (plan §7.1, 사용자 "모두 진행" 2026-11-20)
+   *  line: 차례대로 이길 상대 (가운데 라이벌 채두), steps: 이길 때마다 순위, promo: 승급전 상대 → promoRank 로 next 클래스
+   *  help: 피카츄 도움(§6.4) · hints/undos: 한 판에 쓸 수 있는 수 · techs: 클래스에 들어가면 먼저 배울 기술 수업
+   *  lossDrop: 지면 내려가는 계단 [최소, 최대] (floor 아래로는 안 감)
+   */
+  const INF = 1e9;
+  const LEAGUE = {
+    normal: { line: NORMAL_LINE, steps: NORMAL_STEPS, promo: "korrina", promoRank: 999, next: "super", help: "full", hints: INF, undos: INF, techs: [] },
+    super: { line: ["s1", "s2", "bea2", "s3"], steps: [800, 550, 350, 180], promo: "volkner", promoRank: 99, next: "hyper", help: "half", hints: 5, undos: 5, techs: ["T1", "T2"] },
+    hyper: { line: ["marnie", "iris", "bea3", "gary"], steps: [75, 50, 30, 15], promo: "raihan", promoRank: 8, next: "master", help: "ask", hints: 3, undos: 3, techs: ["T3", "T4"], lossDrop: [3, 5], floor: 99 },
+    // 마스터즈 에이트 = 토너먼트 (8강 성호 → 4강 난천 → 결승 단델), 지면 그 라운드 다시 도전
+    master: { tournament: ["steven", "cynthia", "leon"], rounds: ["8강", "4강", "결승"], steps: [4, 2, 1], help: "none", hints: 0, undos: 1, techs: ["T5"] },
+    champion: { help: "none", hints: 0, undos: 1, techs: [] },
+  };
+  // 토너먼트 대진 (아이 = 8번 자리, 금랑은 9위로 밀림). 다른 경기 결과는 고정
+  const BRACKET = {
+    qf: [["me", "steven"], ["cynthia", "iris"], ["leon", "alain"], ["lance", "diantha"]],
+    qfWin: [null, "cynthia", "leon", "lance"],
+    sf: [["me", "cynthia"], ["leon", "lance"]],
+    sfWin: [null, "leon"],
+  };
+
+  // ---------- 기술 수업 (plan §7.4) — 클래스에 들어가면 먼저 배운다 ----------
+  const TECHS = [
+    { id: "T1", cls: "super", title: "더블 어택 (포크)", icon: "⚔️", kind: "fork",
+      intro: [{ say: "한 친구가 상대 둘을 한꺼번에 노리는 걸 더블 어택이라고 해." }, { say: "상대는 하나만 구할 수 있으니까 다른 하나를 잡을 수 있어! 창파나이트가 특히 잘해." }],
+      task: { type: "move", pool: "T1", n: 5, say: "더블 어택이 되는 수를 찾아 봐!" } },
+    { id: "T2", cls: "super", title: "뒷줄 조심", icon: "🚪", kind: "backrank",
+      intro: [{ say: "대장 앞을 자기 리오르들이 막고 있으면 도망갈 곳이 없어." }, { say: "그때 맨 뒷줄로 망나뇽이나 루카리오가 들어가면 체크메이트! 우리 대장도 조심해야 해." }],
+      task: { type: "move", pool: "T2", n: 5, say: "뒷줄로 들어가서 체크메이트해 봐!" } },
+    { id: "T3", cls: "hyper", title: "그림자 묶기 (핀)", icon: "📌", kind: "pin",
+      intro: [{ say: "상대 친구 뒤에 더 소중한 친구가 있으면, 앞의 친구는 마음대로 움직일 수 없어." }, { say: "이걸 그림자 묶기, 핀이라고 해. 묶인 친구는 나중에 잡기 쉬워!" }],
+      task: { type: "move", pool: "T3", n: 5, say: "상대를 묶어서 이득 보는 수를 찾아 봐!" } },
+    { id: "T4", cls: "hyper", title: "꿰뚫기 (스큐어)", icon: "🏹", kind: "skewer",
+      intro: [{ say: "소중한 상대를 노리면 그 친구는 피해야 해." }, { say: "그런데 바로 뒤에 다른 친구가 있으면 그 친구를 잡을 수 있어. 이걸 꿰뚫기라고 해!" }],
+      task: { type: "move", pool: "T4", n: 5, say: "꿰뚫기 수를 찾아 봐!" } },
+    { id: "T5", cls: "master", title: "두 수 메이트", icon: "👑", kind: "mate2",
+      intro: [{ say: "이번엔 두 번 만에 체크메이트하는 연습이야." }, { say: "첫 수로 상대 대장을 꼼짝 못 하게 만들고, 다음 수로 체크메이트!" }],
+      task: { type: "mate2", pool: "T5", n: 4, say: "두 번 만에 체크메이트해 봐!" } },
+  ];
+
   // 순위표에 나오는 이름 없는 트레이너들 (날마다 조금씩 오르내린다)
   const ROSTER_CLASSES = [
     ["반바지 꼬마", "youngster"], ["짧은치마", "lass"], ["곤충채집 소년", "bugcatcher"], ["캠핑보이", "camper"], ["피크닉걸", "picnicker"],
@@ -157,7 +209,7 @@
   const ROSTER_NAMES = ["민준", "서연", "도윤", "하은", "시우", "지유", "주원", "서아", "하준", "아린", "지호", "윤서", "은우", "채원", "선우", "다인",
     "유준", "수아", "건우", "예린", "우진", "소율", "현우", "나은", "준서", "하린", "로운", "지아", "태윤", "가온", "이안", "봄", "한결", "새봄", "누리", "보라"];
 
-  const Content = { PIECES, ORDER, stagesFor, BATTLES, CONCEPTS, BADGES, BADGE_ICON, CLASSES, START_RANK, NORMAL_STEPS, PROMO_RANK, TRAINERS, NORMAL_LINE, NORMAL_PROMO, NORMAL_EXTRA, MASTERS, ROSTER_CLASSES, ROSTER_NAMES };
+  const Content = { LEAGUE, BRACKET, TECHS, PIECES, ORDER, stagesFor, BATTLES, CONCEPTS, BADGES, BADGE_ICON, CLASSES, START_RANK, NORMAL_STEPS, PROMO_RANK, TRAINERS, NORMAL_LINE, NORMAL_PROMO, NORMAL_EXTRA, MASTERS, ROSTER_CLASSES, ROSTER_NAMES };
   root.Content = Content;
   if (typeof module !== "undefined") module.exports = Content;
 })(typeof window !== "undefined" ? window : globalThis);

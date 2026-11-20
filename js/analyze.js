@@ -140,7 +140,56 @@
     return t.kings[them] >= 0 && !C.inCheck(t) && C.moves(t).length === 0;
   }
 
+  // ---------- 기술 알아보기 (plan §7.4) ----------
+  /** 칸 sq 의 말이 노리는 상대 말들 중 '가치 있는' 것: 상대 대장, 나보다 비싼 말, 지켜 주는 친구가 없는 말 */
+  function forkTargets(t, sq) {
+    const p = t.b[sq];
+    if (!p) return [];
+    const me = C.colorOf(p), them = C.other(me);
+    const u = { b: t.b, turn: me, castle: "", ep: -1, half: 0, full: 1, kings: t.kings };
+    const out = [];
+    for (const m of C.pseudoMoves(u)) {
+      if (m.from !== sq || !m.cap) continue;
+      const q = m.cap;
+      if (q.toUpperCase() === "K" || val(q) > val(p) || C.attackers(t, m.to, them).length === 0) out.push(m.to);
+    }
+    return out;
+  }
+  /** 칸 sq 의 곧게·비스듬히 가는 말이 만드는 묶기(pin)·꿰뚫기(skewer). 돌려주는 값 [{kind, front, back}] */
+  function lineTactics(t, sq) {
+    const p = t.b[sq];
+    if (!p) return [];
+    const T = p.toUpperCase(), me = C.colorOf(p);
+    if (!"BRQ".includes(T)) return [];
+    const d0 = T === "B" ? 4 : 0, d1 = T === "R" ? 4 : 8, out = [];
+    const worth = (q) => (q.toUpperCase() === "K" ? 100 : val(q));
+    for (let d = d0; d < d1; d++) {
+      let front = -1;
+      for (const x of C.RAYS[sq][d]) {
+        const q = t.b[x];
+        if (!q) continue;
+        if (C.colorOf(q) === me) break;
+        if (front < 0) { front = x; continue; }
+        const f = t.b[front];
+        if (worth(q) > worth(f)) out.push({ kind: "pin", front, back: x });
+        else if (worth(f) > worth(q) && worth(q) >= 3) out.push({ kind: "skewer", front, back: x });
+        break;
+      }
+    }
+    return out;
+  }
+  /** 수 m 이 어떤 기술인가: 'fork' | 'pin' | 'skewer' | null */
+  function tacticOf(s, m) {
+    const t = C.make(s, m);
+    if (forkTargets(t, m.to).length >= 2) return "fork";
+    const lt = lineTactics(t, m.to);
+    if (lt.some((x) => x.kind === "skewer")) return "skewer";
+    if (lt.some((x) => x.kind === "pin")) return "pin";
+    return null;
+  }
+
   const Analyze = {
+    forkTargets, lineTactics, tacticOf,
     winningEndgame, mateGuideMove, makesStalemate, qs, gain, pass, hanging, freeCaptures, mateIn1, checks, threatMate, promoNext, checkers, undeveloped, moveValues, refutation, hintMove, val };
   root.Analyze = Analyze;
   if (typeof module !== "undefined") module.exports = Analyze;

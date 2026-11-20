@@ -18,10 +18,12 @@
    * help: 'full' | 'half' | 'ask' | 'none'.  ctx: { tipsSaid:Set } 같은 말을 되풀이하지 않게
    */
   function turnStart(s, goal, help, ctx) {
-    if (help === "none" || help === "ask") return null;
+    if (help === "none") return null;
     ctx = ctx || {};
     const mateGoal = isMateGoal(goal);
     const hasKings = s.kings.w >= 0 && s.kings.b >= 0;
+    // '물으면 도움'(하이퍼)이라도 이기는 끝내기에서는 도망 칸 동그라미만 조용히 보여 준다 (사용자 요청: 마스터즈 전까지 메이트 안내)
+    if (help === "ask") return mateGoal && hasKings ? endgameGuide(s, help, ctx) : null;
     if (mateGoal && hasKings) {
       // 1. 한 수 메이트
       const m1 = A.mateIn1(s);
@@ -102,6 +104,7 @@
     const arrows = best ? [[C.name(best.from), C.name(best.to), "green"]] : [];
     const rings = eg.kingSquares.map(C.name);
     let say = [];
+    if (help === "ask") return msg("endgameGuide", [], { rings, arrows: [], quiet: true });
     if (n <= 1) say = [L.endgame, L.mateGuide];
     else if (eg.far && !(ctx.kingTipAt > n - 4)) { ctx.kingTipAt = n; say = [L.mateKingHelp]; }
     else if (n % 3 === 0) say = [best ? L.mateGuideArrow : L.mateGuide];
@@ -121,6 +124,18 @@
     }
     return null;
   }
+  /**
+   * 배운 기술을 쓸 기회 (plan §6.2-6): 가장 좋은 수가 ⚡2 이상 이득이고, 그게 배운 기술(포크·핀·꼬치) 모양이면.
+   * 그냥 공짜로 잡는 수가 있으면 그건 기술이 아니니 말하지 않는다. learned = ['fork','pin',…]
+   */
+  function tacticHint(s, values, learned) {
+    if (!values || !values.length || values[0].v < 2 || values[0].v >= 90) return null;
+    if (A.freeCaptures(s).length) return null;
+    const k = A.tacticOf(s, values[0].m);
+    if (!k || !learned.includes(k)) return null;
+    return msg("tactic", [{ fork: L.tacticFork, pin: L.tacticPin, skewer: L.tacticSkewer }[k]], { glow: values[0].m.from });
+  }
+
   /** 상대가 둔 수 m 으로 내 말이 잡혔으면 그 말 */
   function afterTheirs(before, m, after) {
     if (m.flag === "ep") return msg("epTheirs", [L.epTheirs]);
@@ -211,7 +226,7 @@
     return L.pinned;
   }
 
-  const Mentor = { turnStart, endgameGuide, drawWarn, afterTheirs, afterMine, warn, hint, illegal };
+  const Mentor = { tacticHint, turnStart, endgameGuide, drawWarn, afterTheirs, afterMine, warn, hint, illegal };
   root.Mentor = Mentor;
   if (typeof module !== "undefined") module.exports = Mentor;
 })(typeof window !== "undefined" ? window : globalThis);

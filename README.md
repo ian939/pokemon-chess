@@ -4,7 +4,7 @@
 기획·근거는 [plan.md](plan.md) (§0 이 구현 확정본).
 
 - 주소: https://ian939.github.io/pokemon-chess/
-- 흐름: 🏫 포켓몬 스쿨(말 6개 × 6단계 → 개념 수업 12개) → 🏅 배지 8개 → 🏆 월드 챔피언십(노멀 클래스 → 승급전 코르니)
+- 흐름: 🏫 포켓몬 스쿨(말 6개 × 6단계 → 개념 수업 12개) → 🏅 배지 8개 → 🏆 월드 챔피언십(노멀 → 슈퍼 → 하이퍼 → 마스터즈 에이트 토너먼트 → 👑 챔피언, 클래스마다 기술 수업 먼저)
 - 피카츄 멘토: 상대 수의 뜻 · 지금 중요한 것 · 위험한 칸(빨간 테두리) · 큰 실수 미리 보기 · 둔 뒤 칭찬, 💡 힌트 3단계, 판 끝 돌아보기
 
 ## 구조 (바닐라 JS, 빌드 없음)
@@ -13,7 +13,7 @@
 |---|---|---|
 | `js/rules.js` | 체스 규칙 엔진 (킹 없는 판도 받음) | `node tools/test-rules.js` (perft 표준값) |
 | `js/game.js` | 한 판 진행 + 미니게임 승리 조건 (mate·promote·captureAll·points·mateIn·stars) | |
-| `js/engine.js` | 평가·탐색·봇 1~8 | `node tools/sim-bots.js`, `node tools/sim-minis.js` |
+| `js/engine.js` · `js/bot-worker.js` | 평가·탐색·봇 1~8 (봇 4~ 는 Web Worker, 시간 제한) | `node tools/sim-bots.js`, `sim-minis.js`, `sim-strong.js`, `sim-endgame.js` |
 | `js/analyze.js` · `js/mentor.js` | 멘토용 판 읽기 · 무슨 말을 할지 | `node tools/test-mentor.js` |
 | `js/school.js` | 스쿨 미션 무작위 생성 + BFS 풀이 | `node tools/check-school.js` |
 | `js/puzzle.js` · `data/puzzles.js` | 개념 수업 퍼즐 판정 · 퍼즐 데이터(자동 생성) | `node tools/check-puzzles.js` |

@@ -665,6 +665,374 @@
   "answer": "stalemate",
   "id": "C11-12"
   }
+  ],
+  "T1": [
+  {
+  "fen": "5n2/8/1k1p3b/8/8/2Q5/3P3K/8 w - - 0 1",
+  "check": "answers",
+  "kind": "fork",
+  "answers": [
+  "c3f6"
+  ],
+  "id": "T1-01"
+  },
+  {
+  "fen": "5r2/1r1pk3/8/8/8/8/1P6/1Q1K4 w - - 0 1",
+  "check": "answers",
+  "kind": "fork",
+  "answers": [
+  "b1e4"
+  ],
+  "id": "T1-02"
+  },
+  {
+  "fen": "2b5/3n4/p4k2/8/8/2P5/K5Q1/8 w - - 0 1",
+  "check": "answers",
+  "kind": "fork",
+  "answers": [
+  "g2c6"
+  ],
+  "id": "T1-03"
+  },
+  {
+  "fen": "6k1/p7/8/5r2/3Q4/8/3P3K/1n6 w - - 0 1",
+  "check": "answers",
+  "kind": "fork",
+  "answers": [
+  "d4g4"
+  ],
+  "id": "T1-04"
+  },
+  {
+  "fen": "1k6/n7/4bp2/8/8/P7/4K3/2Q5 w - - 0 1",
+  "check": "answers",
+  "kind": "fork",
+  "answers": [
+  "c1f4",
+  "c1b2"
+  ],
+  "id": "T1-05"
+  },
+  {
+  "fen": "8/7r/2kp4/1b6/8/PQ6/8/3K4 w - - 0 1",
+  "check": "answers",
+  "kind": "fork",
+  "answers": [
+  "b3c2"
+  ],
+  "id": "T1-06"
+  },
+  {
+  "fen": "3r4/2p5/1k3n2/8/8/8/P3Q3/1K6 w - - 0 1",
+  "check": "answers",
+  "kind": "fork",
+  "answers": [
+  "e2f2",
+  "e2b2"
+  ],
+  "id": "T1-07"
+  },
+  {
+  "fen": "k4r2/3p4/8/8/8/8/P1Q5/2K1b3 w - - 0 1",
+  "check": "answers",
+  "kind": "fork",
+  "answers": [
+  "c2e4"
+  ],
+  "id": "T1-08"
+  },
+  {
+  "fen": "8/1k3p2/8/5n2/8/2Q5/P3K3/7r w - - 0 1",
+  "check": "answers",
+  "kind": "fork",
+  "answers": [
+  "c3f3"
+  ],
+  "id": "T1-09"
+  },
+  {
+  "fen": "8/4p1b1/k7/8/2b5/8/7P/1Q2K3 w - - 0 1",
+  "check": "answers",
+  "kind": "fork",
+  "answers": [
+  "b1b4"
+  ],
+  "id": "T1-10"
+  }
+  ],
+  "T2": [
+  {
+  "fen": "7k/6pp/8/R7/8/2P5/8/2K5 w - - 0 1",
+  "check": "mate",
+  "kind": "backrank",
+  "id": "T2-01"
+  },
+  {
+  "fen": "5k2/4ppp1/8/4BQ2/8/8/P7/2K5 w - - 0 1",
+  "check": "mate",
+  "kind": "backrank",
+  "id": "T2-02"
+  },
+  {
+  "fen": "4k3/3ppp2/8/1R6/8/P7/8/3K4 w - - 0 1",
+  "check": "mate",
+  "kind": "backrank",
+  "id": "T2-03"
+  },
+  {
+  "fen": "6k1/5ppp/8/8/3R4/6P1/K7/6B1 w - - 0 1",
+  "check": "mate",
+  "kind": "backrank",
+  "id": "T2-04"
+  },
+  {
+  "fen": "7k/6pp/8/1R3N2/8/8/2KP4/8 w - - 0 1",
+  "check": "mate",
+  "kind": "backrank",
+  "id": "T2-05"
+  },
+  {
+  "fen": "4k3/3ppp2/8/8/8/2R5/2P1R3/2K5 w - - 0 1",
+  "check": "mate",
+  "kind": "backrank",
+  "id": "T2-06"
+  },
+  {
+  "fen": "6k1/5ppp/8/8/7r/8/2R2KP1/8 w - - 0 1",
+  "check": "mate",
+  "kind": "backrank",
+  "id": "T2-07"
+  },
+  {
+  "fen": "7k/6pp/8/8/3Q4/3n4/2K1P3/8 w - - 0 1",
+  "check": "mate",
+  "kind": "backrank",
+  "id": "T2-08"
+  }
+  ],
+  "T3": [
+  {
+  "fen": "7n/5kp1/8/8/8/5n2/KP6/3R4 w - - 0 1",
+  "check": "answers",
+  "kind": "pin",
+  "answers": [
+  "d1f1"
+  ],
+  "id": "T3-01"
+  },
+  {
+  "fen": "4k3/8/6p1/8/4n3/R5P1/K6n/8 w - - 0 1",
+  "check": "answers",
+  "kind": "pin",
+  "answers": [
+  "a3e3"
+  ],
+  "id": "T3-02"
+  },
+  {
+  "fen": "8/1n4k1/3p4/8/8/8/2K1P1b1/R7 w - - 0 1",
+  "check": "answers",
+  "kind": "pin",
+  "answers": [
+  "a1g1"
+  ],
+  "id": "T3-03"
+  },
+  {
+  "fen": "2n3k1/8/3pn3/8/8/1R1P4/3K4/8 w - - 0 1",
+  "check": "answers",
+  "kind": "pin",
+  "answers": [
+  "b3b8"
+  ],
+  "id": "T3-04"
+  },
+  {
+  "fen": "3b3k/8/5p2/7b/5R2/6P1/8/5K2 w - - 0 1",
+  "check": "answers",
+  "kind": "pin",
+  "answers": [
+  "f4h4"
+  ],
+  "id": "T3-05"
+  },
+  {
+  "fen": "4k3/3n4/6p1/8/8/4n3/2P4R/4K3 w - - 0 1",
+  "check": "answers",
+  "kind": "pin",
+  "answers": [
+  "h2e2"
+  ],
+  "id": "T3-06"
+  },
+  {
+  "fen": "5n2/k4p2/8/8/8/1P6/n7/5K1Q w - - 0 1",
+  "check": "answers",
+  "kind": "pin",
+  "answers": [
+  "h1f3"
+  ],
+  "id": "T3-07"
+  },
+  {
+  "fen": "7R/2k3n1/5p2/7b/8/8/2P3K1/8 w - - 0 1",
+  "check": "answers",
+  "kind": "pin",
+  "answers": [
+  "h8h7"
+  ],
+  "id": "T3-08"
+  }
+  ],
+  "T4": [
+  {
+  "fen": "r3k3/8/b4p2/8/8/8/K1P5/6Q1 w - - 0 1",
+  "check": "answers",
+  "kind": "skewer",
+  "answers": [
+  "g1g8"
+  ],
+  "id": "T4-01"
+  },
+  {
+  "fen": "q2k4/5p2/8/8/8/5P2/5K2/n6Q w - - 0 1",
+  "check": "answers",
+  "kind": "skewer",
+  "answers": [
+  "h1h8"
+  ],
+  "id": "T4-02"
+  },
+  {
+  "fen": "1n5Q/1q3k2/2p5/8/8/4P3/8/7K w - - 0 1",
+  "check": "answers",
+  "kind": "skewer",
+  "answers": [
+  "h8h7"
+  ],
+  "id": "T4-03"
+  },
+  {
+  "fen": "5q2/7p/3k4/5n2/8/8/5P2/2Q4K w - - 0 1",
+  "check": "answers",
+  "kind": "skewer",
+  "answers": [
+  "c1a3"
+  ],
+  "id": "T4-04"
+  },
+  {
+  "fen": "2k2q2/3p4/3r4/8/Q7/2P5/4K3/8 w - - 0 1",
+  "check": "answers",
+  "kind": "skewer",
+  "answers": [
+  "a4a8"
+  ],
+  "id": "T4-05"
+  },
+  {
+  "fen": "q3k3/2p5/2r5/8/8/8/4P1Q1/6K1 w - - 0 1",
+  "check": "answers",
+  "kind": "skewer",
+  "answers": [
+  "g2g8"
+  ],
+  "id": "T4-06"
+  },
+  {
+  "fen": "2k2q2/8/5p2/Q7/8/2P5/7r/2K5 w - - 0 1",
+  "check": "answers",
+  "kind": "skewer",
+  "answers": [
+  "a5a8"
+  ],
+  "id": "T4-07"
+  },
+  {
+  "fen": "5b2/8/3k2qp/8/8/4Q3/2P5/3K4 w - - 0 1",
+  "check": "answers",
+  "kind": "skewer",
+  "answers": [
+  "e3b6"
+  ],
+  "id": "T4-08"
+  }
+  ],
+  "T5": [
+  {
+  "fen": "8/8/6K1/2B5/8/8/4Q3/7k w - - 0 1",
+  "check": "mate2",
+  "kind": "mate2",
+  "answers": [
+  "e2f1"
+  ],
+  "id": "T5-01"
+  },
+  {
+  "fen": "8/4p3/8/R7/8/7k/2Q5/7K w - - 0 1",
+  "check": "mate2",
+  "kind": "mate2",
+  "answers": [
+  "a5a4"
+  ],
+  "id": "T5-02"
+  },
+  {
+  "fen": "8/7p/k6K/8/8/8/3Q2B1/8 w - - 0 1",
+  "check": "mate2",
+  "kind": "mate2",
+  "answers": [
+  "d2b4"
+  ],
+  "id": "T5-03"
+  },
+  {
+  "fen": "6k1/8/3K4/R7/8/8/8/Q7 w - - 0 1",
+  "check": "mate2",
+  "kind": "mate2",
+  "answers": [
+  "a5a7"
+  ],
+  "id": "T5-04"
+  },
+  {
+  "fen": "3Q4/8/8/4K3/8/8/k7/6R1 w - - 0 1",
+  "check": "mate2",
+  "kind": "mate2",
+  "answers": [
+  "d8b8",
+  "d8b6"
+  ],
+  "id": "T5-05"
+  },
+  {
+  "fen": "7B/p7/8/2K5/4Q3/8/k7/8 w - - 0 1",
+  "check": "mate2",
+  "kind": "mate2",
+  "answers": [
+  "e4b4"
+  ],
+  "id": "T5-06"
+  },
+  {
+  "fen": "5Q2/2k5/4Rp2/8/8/4K3/8/8 w - - 0 1",
+  "check": "mate2",
+  "kind": "mate2",
+  "answers": [
+  "f8f7"
+  ],
+  "id": "T5-07"
+  },
+  {
+  "fen": "8/4N2k/8/8/8/7K/8/4Q3 w - - 0 1",
+  "check": "mate2",
+  "kind": "mate2",
+  "answers": [
+  "e1g1",
+  "e1g3"
+  ],
+  "id": "T5-08"
+  }
   ]
   };
   root.PUZZLES = PUZZLES;

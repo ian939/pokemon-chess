@@ -347,3 +347,28 @@ img { image-rendering: pixelated; -webkit-user-drag: none; }
   .pika { width: 56px; height: 56px; }
   .bubble p { font-size: 16px; }
 }
+
+/* ---------- 슈퍼·하이퍼·마스터 (2026-11-20) ---------- */
+.helptxt { margin-top: 4px; font-size: 13px; color: #555; }
+.rival-banner.gold { background: linear-gradient(90deg, #b8860b, #ffcc33, #b8860b); color: var(--ink); text-shadow: 0 1px 0 #fff; }
+.ranks.one { grid-template-columns: 1fr; }
+.oppcard.champ .crown { font-size: 34px; color: #b8860b; }
+.oppcard .btn + .btn { margin-top: 6px; }
+.lcard.tech { background: #efe6ff; }
+.lcard.tech.done { background: #e2f5dd; }
+/* 토너먼트 대진표 */
+.bracket { display: grid; grid-template-columns: 1.2fr 1.2fr 1.2fr .8fr; gap: 10px; align-items: center; background: rgba(0, 0, 0, .25); border-radius: 14px; padding: 10px; }
+.bracket { align-items: stretch; }
+.bcol { display: flex; flex-direction: column; gap: 6px; }
+.bms { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: space-around; }
+.bcol h4 { margin: 0; text-align: center; color: var(--gold); }
+.bm { display: flex; flex-direction: column; gap: 2px; background: rgba(255, 255, 255, .08); border-radius: 10px; padding: 4px; }
+.bm span { display: flex; align-items: center; gap: 4px; min-height: 30px; font-size: 14px; padding: 2px 6px; border-radius: 8px; color: #e8edff; }
+.bm span img { width: 28px; height: 28px; }
+.bm span.me { background: rgba(255, 204, 51, .35); color: #fff; font-weight: 700; }
+.bm span.win { outline: 2px solid var(--gold); }
+.bm span.out { opacity: .4; text-decoration: line-through; }
+/* 챔피언 */
+.champion-box { background: linear-gradient(180deg, #fff6d0, var(--paper)); }
+.champion-box .trophy { font-size: 84px; animation: bob 1.2s ease-in-out infinite; }
+@media (max-width: 900px) { .bracket { grid-template-columns: 1fr 1fr; } }

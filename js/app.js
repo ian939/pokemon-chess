@@ -181,6 +181,8 @@ const allPieces = () => Ct.ORDER.every(pieceDone);
 const conceptDone = (id) => !!S().concepts[id];
 function conceptOpen(id) {
   if (S().settings.unlockAll) return true;
+  const tech = Ct.TECHS.find((x) => x.id === id);
+  if (tech) return reached(tech.cls); // 기술 수업은 그 클래스에 올라가면 열린다
   const i = Ct.CONCEPTS.findIndex((c) => c.id === id);
   return i === 0 ? allPieces() : conceptDone(Ct.CONCEPTS[i - 1].id);
 }
@@ -205,7 +207,7 @@ function renderHome() {
       <nav class="menu">
         <button class="mbtn school" data-go="school"><b>🏫</b><span>포켓몬 스쿨</span><small>말 하나씩 배우기</small></button>
         <button class="mbtn badge ${Ct.BADGES.some(badgeOpen) ? "" : "locked"}" data-go="badges"><b>🏅</b><span>배지 도전</span><small>${badgeCount()} / 8 배지</small></button>
-        <button class="mbtn league ${leagueOpen() ? "" : "locked"}" data-go="league"><b>🏆</b><span>월드 챔피언십</span><small>${leagueOpen() ? lg.rank.toLocaleString() + "위" : "배지 8개 필요"}</small></button>
+        <button class="mbtn league ${leagueOpen() ? "" : "locked"}" data-go="league"><b>${lg.cls === "champion" ? "👑" : "🏆"}</b><span>월드 챔피언십</span><small>${!leagueOpen() ? "배지 8개 필요" : lg.cls === "champion" ? "월드 챔피언!" : `${clsInfo(lg.cls).ball} ${clsInfo(lg.cls).name} · ${lg.rank.toLocaleString()}위`}</small></button>
         <button class="mbtn dex" data-go="dex"><b>📘</b><span>도감</span><small>친구 · 트레이너 · 배지</small></button>
       </nav>
       <footer class="foot">
@@ -246,6 +248,11 @@ function renderSchool() {
     const open = conceptOpen(c.id), st = S().concepts[c.id];
     return `<button class="lcard ${open ? "" : "locked"} ${st ? "done" : ""}" data-c="${c.id}"><b>${c.icon}</b><span>${esc(c.title)}</span><small>${st ? stars3(st.stars) : open ? "새 수업!" : "🔒"}</small></button>`;
   }).join("");
+  const clsName = { super: "슈퍼 클래스", hyper: "하이퍼 클래스", master: "마스터즈 에이트" };
+  const techs = Ct.TECHS.map((c) => {
+    const open = conceptOpen(c.id), st = S().concepts[c.id];
+    return `<button class="lcard tech ${open ? "" : "locked"} ${st ? "done" : ""}" data-c="${c.id}"><b>${c.icon}</b><span>${esc(c.title)}</span><small>${st ? stars3(st.stars) : open ? "새 기술!" : "🔒 " + clsName[c.cls]}</small></button>`;
+  }).join("");
   screen("screen-list", `
     <div class="list-page">
       <div class="topbar"><button class="btn icon" data-v="home" aria-label="뒤로">◀</button><h2>🏫 포켓몬 스쿨</h2></div>
@@ -253,6 +260,8 @@ function renderSchool() {
       <div class="pgrid">${cards}</div>
       <h3 class="sec">체스 수업 <small>여섯 친구를 다 배우면 열려요</small></h3>
       <div class="lgrid">${lessons}</div>
+      <h3 class="sec">기술 수업 <small>월드 챔피언십에서 클래스가 오르면 열려요</small></h3>
+      <div class="lgrid">${techs}</div>
     </div>`);
   app().onclick = (e) => {
     if (e.target.closest('[data-v="home"]')) return renderHome();
@@ -523,6 +532,41 @@ function runMission(board, ms, o) {
 }
 
 // =====================================================================
+// 봇 생각 — 봇 4 이상은 Web Worker 에서 (그동안 피카츄·화면이 멈추지 않게)
+// =====================================================================
+const BotThink = {
+  w: null, n: 0, waiting: {},
+  worker() {
+    if (this.w === false) return null;
+    if (this.w) return this.w;
+    try {
+      if (TEST || location.protocol === "file:" || !window.Worker) throw new Error("no worker");
+      this.w = new Worker("js/bot-worker.js?v=" + APP_VERSION);
+      this.w.onmessage = (e) => { const f = this.waiting[e.data.id]; if (f) { delete this.waiting[e.data.id]; f(e.data.uci); } };
+      this.w.onerror = () => { this.w = false; };
+    } catch (e) { this.w = false; }
+    return this.w || null;
+  },
+  /** 봇이 둘 수 (Promise). 일꾼이 늦거나 고장 나면 그 자리에서 계산 */
+  pick(s, level, goal, rng) {
+    const w = typeof level === "number" && level >= 4 ? this.worker() : null;
+    if (!w) return Promise.resolve(Engine.pick(s, level, goal, rng));
+    const id = ++this.n;
+    const budget = level >= 8 ? 1800 : level >= 6 ? 1200 : 600;
+    return new Promise((resolve) => {
+      const done = (uci) => {
+        clearTimeout(timer);
+        const m = uci ? C.moves(s, { promos: "Q" }).find((x) => C.uci(x) === uci) : null;
+        resolve(m || Engine.pick(s, Math.min(level, 5), goal, rng));
+      };
+      const timer = setTimeout(() => { delete this.waiting[id]; done(null); }, budget + 4000);
+      this.waiting[id] = done;
+      w.postMessage({ id, fen: C.fen(s), level, goal, seed: Math.floor(rng() * 1e9), budget });
+    });
+  },
+};
+
+// =====================================================================
 // 대결 (미니 대결 · 배지 · 리그 · 첫 걸음 수업)
 // =====================================================================
 /**
@@ -633,7 +677,16 @@ function runGame(o) {
       if (lines.length) say(lines);
       if (mateGoal && help !== "none" && g.s.kings.w >= 0) {
         const at = g.hist.length;
-        setTimeout(() => { if (g.hist.length === at && !g.over) { values = Analyze.moveValues(g.s); valuesAt = at; } }, TEST ? 0 : 60);
+        // 할 말이 없던 차례에만 '배운 기술 기회'를 알려 준다 (사용자: 수업에서 배운 걸 실전에서)
+        const quiet = !tm || tm.kind === "cheer" || tm.kind === "open";
+        setTimeout(() => {
+          if (g.hist.length !== at || g.over) return;
+          values = Analyze.moveValues(g.s); valuesAt = at;
+          if (quiet && !prev && (help === "full" || help === "half")) {
+            const th = Mentor.tacticHint(g.s, values, learnedTactics());
+            if (th && g.hist.length === at) { hintMarks = { glow: th.glow }; draw(); say(th.say); }
+          }
+        }, TEST ? 0 : 60);
       }
     };
     const botTurn = async () => {
@@ -641,7 +694,7 @@ function runGame(o) {
       await sleep(650);
       let m;
       if (o.bot === "race" || o.bot === "raceEasy") m = School.raceBot(g, rng, o.bot === "raceEasy" ? "easy" : "normal");
-      else m = Engine.pick(g.s, o.bot, goal, rng);
+      else m = await BotThink.pick(g.s, o.bot, goal, rng);
       if (!m) { g.over = Game.result(g, { p: "k", from: 0, to: 0 }) || { winner: null, reason: "nomoves" }; return finish(); }
       await board.slide(m.from, m.to);
       if (m.flag === "K" || m.flag === "Q") { /* 룩도 옮겨짐: set 으로 반영 */ }
@@ -754,9 +807,12 @@ function resultLine(goal, r) {
 // =====================================================================
 // 개념 수업 (plan §4.3)
 // =====================================================================
-async function startConcept(id) {
-  const c = Ct.CONCEPTS.find((x) => x.id === id);
-  const board = playScreen({ title: `${c.icon} ${c.title}`, onExit: renderSchool });
+let lessonBack = renderSchool; // 수업이 끝나거나 나가면 돌아갈 곳 (스쿨 또는 리그)
+const lessonOf = (id) => Ct.CONCEPTS.find((x) => x.id === id) || Ct.TECHS.find((x) => x.id === id);
+async function startConcept(id, back) {
+  lessonBack = back || renderSchool;
+  const c = lessonOf(id);
+  const board = playScreen({ title: `${c.icon} ${c.title}`, onExit: () => lessonBack() });
   const empty = C.parse("8/8/8/8/8/8/8/8 w - - 0 1");
   board.set(empty); board.marks({});
   setSteps(["설명", "연습"], 0);
@@ -778,7 +834,7 @@ async function startConcept(id) {
     await sleep(1200);
     for (const r of due) {
       const pz = (window.PUZZLES[r.pool] || []).find((x) => x.id === r.id);
-      const lesson = Ct.CONCEPTS.find((x) => x.task.pool === r.pool);
+      const lesson = [...Ct.CONCEPTS, ...Ct.TECHS].find((x) => x.task.pool === r.pool);
       if (!pz || !lesson) continue;
       const res = await runPuzzle(board, lesson.task, pz, "복습");
       if (res === null) return;
@@ -806,8 +862,8 @@ async function startConcept(id) {
   SFX.win();
   setInfo(`<div class="win-card"><b>${stars3(stars)}</b><span>${esc(L.lessonDone)}</span></div>`);
   say(L.lessonDone);
-  const v = await askSide([["school", "스쿨로 ▶", "primary"]]);
-  if (v) renderSchool();
+  const v = await askSide([["school", lessonBack === renderSchool ? "스쿨로 ▶" : "챔피언십으로 ▶", "primary"]]);
+  if (v) lessonBack();
 }
 
 /** 퍼즐 하나 → 틀린 횟수 (나가면 null) */
@@ -819,7 +875,7 @@ function runPuzzle(board, task, pz, label) {
     const kind = pz.check ? "move" : isTap ? "tap" : task.type;
     const answer = isTap ? Puzzle.tapAnswer(pz) : null;
     const out = (v) => { P = {}; resolve(v); };
-    $("#exitBtn").onclick = () => { P = {}; resolve(null); renderSchool(); };
+    $("#exitBtn").onclick = () => { P = {}; resolve(null); lessonBack(); };
     const draw = (extra) => {
       board.set(s);
       const ms = sel >= 0 ? C.moves(s).filter((m) => m.from === sel) : [];
@@ -923,7 +979,10 @@ function runPuzzle(board, task, pz, label) {
     const qText = task.say;
     info(qText);
     say(qText);
-    const goodMoves = () => C.moves(s).filter((m) => Puzzle.checkMove(pz, s, m).ok);
+    // 두 수 메이트(T5): 첫 수가 맞으면 상대가 막고, 그다음은 한 수 메이트 찾기
+    let stage = 1;
+    const pzNow = () => (stage === 2 ? { check: "mate" } : pz);
+    const goodMoves = () => C.moves(s).filter((m) => Puzzle.checkMove(pzNow(), s, m).ok);
     setTools(`<button class="btn" data-t="hint">💡 힌트</button>`, () => {
       const g = goodMoves()[0];
       if (!g) return;
@@ -940,23 +999,35 @@ function runPuzzle(board, task, pz, label) {
         return;
       }
       busy = true; hint = {};
-      const r = Puzzle.checkMove(pz, s, m);
+      const r = Puzzle.checkMove(pzNow(), s, m);
       const s0 = s;
       await board.slide(m.from, m.to);
       s = C.make(s, m);
       sel = -1; draw();
+      if (r.ok && pz.check === "mate2" && stage === 1) {
+        // 첫 수 성공 → 상대가 가장 오래 버티는 수로 막는다 → 이제 체크메이트 찾기
+        SFX.star();
+        say(L.t2First);
+        await sleep(900);
+        const rep = Engine.best(s, 1, { type: "mate" }, { nodes: 80000 });
+        if (rep) { await board.slide(rep.m.from, rep.m.to); s = C.make(s, rep.m); }
+        stage = 2; busy = false; draw();
+        info(L.t2Now); say(L.t2Now);
+        return;
+      }
       if (r.ok) {
         const howLine = { run: L.howRun, capture: L.howCapture, block: L.howBlock, guard: L.howGuard }[r.how];
         const escLine = { run: L.escRun, capture: L.escCapture, block: L.escBlock }[r.how];
-        const extra = pz.check === "save" ? howLine : pz.check === "escape" ? escLine : pz.check === "mate" ? L.win : null;
+        const techLine = { fork: L.tFork, pin: L.tPin, skewer: L.tSkewer, backrank: L.tBackrank, mate2: L.t2Mate }[pz.kind];
+        const extra = techLine || (pz.check === "save" ? howLine : pz.check === "escape" ? escLine : pz.check === "mate" ? L.win : null);
         return success([L.right, extra].filter(Boolean));
       }
-      miss({ notCapture: L.notCapture, badTrade: L.badTrade, stillHanging: L.stillHanging, noCheck: L.noCheck, onlyCheck: L.onlyCheck, noMate: L.noMate }[r.how] || L.wrong);
+      miss({ notCapture: L.notCapture, badTrade: L.badTrade, stillHanging: L.stillHanging, noCheck: L.noCheck, onlyCheck: L.onlyCheck, noMate: L.noMate, notBest: L.notBest }[r.how] || L.wrong);
       await sleep(1300);
       s = s0; draw(); busy = false;
     };
     P = {
-      kind: "puzzle", pz, s: () => s, busy: () => busy,
+      kind: "puzzle", get pz() { return pzNow(); }, s: () => s, busy: () => busy,
       onDown(sq) {
         if (busy) return false;
         const p = s.b[sq];
@@ -978,7 +1049,7 @@ function runSetup(board) {
     const s = C.parse("rnbqkbnr/pppppppp/8/8/8/8/8/8 w - - 0 1");
     const need = { P: 8, R: 2, N: 2, B: 2, Q: 1, K: 1 };
     let pick = null, mistakes = 0;
-    $("#exitBtn").onclick = () => { P = {}; resolve(null); renderSchool(); };
+    $("#exitBtn").onclick = () => { P = {}; resolve(null); lessonBack(); };
     const tray = () => {
       setTools(Object.keys(need).map((k) => `<button class="btn tray ${pick === k ? "primary" : ""}" data-t="${k}" ${need[k] ? "" : "disabled"}><img src="${spr(Board.DEX[k])}" alt=""><span>${need[k]}</span></button>`).join(""), (k) => { pick = k; tray(); draw(); });
     };
@@ -1099,36 +1170,93 @@ async function startBadge(b) {
 // =====================================================================
 // 월드 챔피언십 (plan §7)
 // =====================================================================
-function nextOpponent() {
+// 클래스 상태 (예전 기록 옮기기: clsWins 가 없으면 노멀은 wins, 그 밖의 클래스는 0)
+function league() {
   const lg = S().league;
-  if (lg.cls !== "normal") return null;
-  if (lg.wins >= Ct.NORMAL_LINE.length) return Ct.NORMAL_PROMO;
-  return Ct.NORMAL_LINE[lg.wins];
+  if (lg.clsWins == null) lg.clsWins = lg.cls === "normal" ? Math.min(lg.wins, Ct.LEAGUE.normal.line.length) : 0;
+  return lg;
+}
+const clsOf = (lg) => Ct.LEAGUE[lg.cls] || Ct.LEAGUE.normal;
+const clsInfo = (id) => Ct.CLASSES.find((c) => c.id === id) || Ct.CLASSES[0];
+const CLASS_ORDER = ["normal", "super", "hyper", "master", "champion"];
+const reached = (cls) => CLASS_ORDER.indexOf(league().cls) >= CLASS_ORDER.indexOf(cls);
+/** 지금 클래스에서 먼저 배울 기술 중 아직 안 배운 것 */
+const techTodo = (lg) => (clsOf(lg).techs || []).filter((id) => !S().concepts[id]);
+/** 배운 기술 (게임 중 피카츄가 기회를 알려 줄 것) */
+const learnedTactics = () => Ct.TECHS.filter((t) => S().concepts[t.id]).map((t) => t.kind);
+const INF_CNT = (n) => (n == null || n >= 1e8 ? Infinity : n);
+
+function nextOpponent() {
+  const lg = league(), L0 = clsOf(lg);
+  if (lg.cls === "champion") return null;
+  if (L0.tournament) return L0.tournament[Math.min(lg.clsWins, L0.tournament.length - 1)];
+  if (lg.clsWins >= L0.line.length) return L0.promo;
+  return L0.line[lg.clsWins];
+}
+function matchLabel(lg, opp) {
+  const L0 = clsOf(lg);
+  if (L0.tournament) return `🏆 토너먼트 ${L0.rounds[Math.min(lg.clsWins, 2)]}`;
+  if (opp.promo) return "⭐ 승급전";
+  const n = `(${lg.clsWins + 1}/${L0.line.length})`;
+  return opp.rival ? `⚔️ 라이벌전! ${n}` : `다음 상대 ${n}`;
+}
+/** 마스터즈 에이트 대진표 (아이 = 8번 자리). 다른 경기 결과는 아이가 그 라운드를 끝낸 뒤 공개 */
+function bracketHTML(lg) {
+  const B = Ct.BRACKET, champ = lg.cls === "champion", w = champ ? 3 : lg.clsWins;
+  const nm = (id) => (id === "me" ? S().name : Ct.TRAINERS[id].name);
+  const cell = (id, win, out) => `<span class="${id === "me" ? "me" : ""} ${win ? "win" : ""} ${out ? "out" : ""}"><img src="${trn(id === "me" ? "ash" : Ct.TRAINERS[id].sprite)}" alt="">${esc(nm(id))}</span>`;
+  const pair = (p, winner) => `<div class="bm">${cell(p[0], winner === p[0], winner && winner !== p[0])}${cell(p[1], winner === p[1], winner && winner !== p[1])}</div>`;
+  const hidden = '<div class="bm"><span>?</span><span>?</span></div>';
+  const qf = B.qf.map((p, i) => pair(p, w >= 1 ? (i === 0 ? "me" : B.qfWin[i]) : null)).join("");
+  const sf = w >= 1 ? B.sf.map((p, i) => pair(p, w >= 2 ? (i === 0 ? "me" : B.sfWin[i]) : null)).join("") : hidden + hidden;
+  const fin = w >= 2 ? pair(["me", "leon"], w >= 3 ? "me" : null) : hidden;
+  const col = (h, body) => `<div class="bcol"><h4>${h}</h4><div class="bms">${body}</div></div>`;
+  return `<div class="bracket">${col("8강", qf)}${col("4강", sf)}${col("결승", fin)}${col("👑 우승", `<div class="bm">${champ ? cell("me", true, false) : "<span>?</span>"}</div>`)}</div>`;
+}
+function allTrainerIds() {
+  const out = [];
+  for (const id of CLASS_ORDER) {
+    const L0 = Ct.LEAGUE[id];
+    if (!L0) continue;
+    for (const x of [...(L0.line || []), ...(L0.promo ? [L0.promo] : []), ...(L0.tournament || [])]) if (!out.includes(x)) out.push(x);
+  }
+  return out;
 }
 function renderLeague() {
-  const lg = S().league;
+  const lg = league();
+  const L0 = clsOf(lg), ci = clsInfo(lg.cls);
   const day = today();
-  const cls = Ct.CLASSES.find((c) => c.id === lg.cls);
   const me = { rank: lg.rank, name: S().name, wins: lg.wins, rivalBeat: !!lg.rivalBeat, rivalBeatDay: lg.rivalBeatDay };
   const bd = Ranking.board(day, me);
   const oppId = nextOpponent();
   const opp = oppId && Ct.TRAINERS[oppId];
-  const rows = bd.near.map((x) => `<li class="${x.me ? "me" : ""} ${x.rival ? "rival" : ""}"><span class="rk">${x.rank.toLocaleString()}위</span>${x.me ? `<img src="${trn("ash")}" alt="">` : `<img src="${trn(x.sprite)}" alt="">`}<b>${esc(x.name)}</b>${x.rival ? "<em>라이벌</em>" : ""}</li>`).join("");
-  const masters = bd.masters.map((x) => `<li class="master"><span class="rk">${x.rank}위</span><img src="${trn(x.sprite)}" alt=""><b>${esc(x.name)}</b></li>`).join("");
+  const todo = techTodo(lg);
+  const row = (x) => `<li class="${x.me ? "me" : ""} ${x.rival ? "rival" : ""} ${x.master ? "master" : ""}"><span class="rk">${x.rank.toLocaleString()}위</span><img src="${trn(x.me ? "ash" : x.sprite)}" alt=""><b>${esc(x.name)}</b>${x.rival ? "<em>라이벌</em>" : ""}</li>`;
+  let card;
+  if (lg.cls === "champion") {
+    card = `<div class="oppcard champ"><b class="crown">👑 월드 챔피언!</b><span>${esc(V.I(S().name))} 세계에서 제일 체스를 잘해요!</span>
+      <button class="btn big primary" data-v="defend">챔피언 방어전 (연습) ▶</button></div>`;
+  } else if (todo.length) {
+    card = `<div class="oppcard"><small>📚 ${esc(ci.name)} 시작 전에</small><b>새 기술을 먼저 배워요!</b>
+      ${todo.map((id) => { const t = Ct.TECHS.find((x) => x.id === id); return `<button class="btn big primary" data-v="tech" data-id="${id}">${t.icon} ${esc(t.title)} ▶</button>`; }).join("")}</div>`;
+  } else {
+    card = `<div class="oppcard"><small>${esc(matchLabel(lg, opp))}</small><img src="${trn(opp.sprite)}" alt=""><b>${esc(opp.name)}</b><span>대장 ${esc(opp.aceName)} <img src="${spr(opp.ace)}" alt=""></span>
+      <button class="btn big primary" data-v="match">${S().game && S().game.trainer === oppId ? "이어서 두기 ▶" : "대결! ▶"}</button></div>`;
+  }
+  const helpTxt = { full: "피카츄가 많이 도와줘요", half: "피카츄가 위험할 때만 도와줘요 · 💡↩ 5번", ask: "💡 힌트를 누를 때만 도와줘요 · 💡↩ 3번", none: "혼자 힘으로! · ↩ 1번" }[L0.help];
   screen("screen-list", `
     <div class="list-page league">
       <div class="topbar"><button class="btn icon" data-v="home" aria-label="뒤로">◀</button><h2>🏆 월드 챔피언십</h2></div>
       <div class="league-top">
-        <div class="mycard"><img src="${trn("ash")}" alt=""><div><small>${cls.ball} ${cls.name}</small><b class="myrank">${lg.rank.toLocaleString()}위</b><span>${lg.wins}승 ${lg.losses}패 ${lg.draws}무</span></div></div>
-        ${opp ? `<div class="oppcard"><small>${opp.promo ? "⭐ 승급전" : opp.rival ? `⚔️ 라이벌전! (${lg.wins + 1}/${Ct.NORMAL_LINE.length})` : `다음 상대 (${lg.wins + 1}/${Ct.NORMAL_LINE.length})`}</small><img src="${trn(opp.sprite)}" alt=""><b>${esc(opp.name)}</b><span>대장 ${esc(opp.aceName)} <img src="${spr(opp.ace)}" alt=""></span>
-          <button class="btn big primary" data-v="match">${S().game ? "이어서 두기 ▶" : "대결! ▶"}</button></div>`
-          : `<div class="oppcard"><b>🔵 슈퍼 클래스</b><span>${esc(L.superSoon)}</span><button class="btn big primary" data-v="free">연습 대결 ▶</button></div>`}
+        <div class="mycard"><img src="${trn("ash")}" alt=""><div><small>${ci.ball} ${esc(ci.name)}</small><b class="myrank">${lg.rank.toLocaleString()}위</b><span>${lg.wins}승 ${lg.losses}패 ${lg.draws}무</span><small class="helptxt">${esc(helpTxt)}</small></div></div>
+        ${card}
       </div>
+      ${L0.tournament || lg.cls === "champion" ? `<h3 class="sec">🏆 마스터즈 에이트 토너먼트</h3>${bracketHTML(lg)}` : ""}
       ${S().settings.unlockAll ? `<div class="free-pick"><h3 class="sec">🔓 상대 고르기 <small>(어른 모드 · 다음 상대가 아니면 연습 대결이라 순위는 그대로)</small></h3>
-        <div class="free-list">${[...Ct.NORMAL_LINE, ...Ct.NORMAL_EXTRA, Ct.NORMAL_PROMO].map((id) => { const t = Ct.TRAINERS[id]; return `<button class="btn free-opp" data-v="pick" data-id="${id}"><img src="${trn(t.sprite)}" alt=""><span>${esc(t.name)}</span><small>봇 ${t.bot}${t.promo ? " · 승급전" : ""}</small></button>`; }).join("")}</div></div>` : ""}
-      <div class="ranks">
-        <div><h3 class="sec">내 순위 둘레</h3><ol class="rlist">${rows}</ol></div>
-        <div><h3 class="sec">🟣 마스터즈 에이트</h3><ol class="rlist">${masters}</ol></div>
+        <div class="free-list">${[...allTrainerIds(), ...Ct.NORMAL_EXTRA].map((id) => { const t = Ct.TRAINERS[id]; return `<button class="btn free-opp" data-v="pick" data-id="${id}"><img src="${trn(t.sprite)}" alt=""><span>${esc(t.name)}</span><small>봇 ${t.bot}${t.promo ? " · 승급전" : t.rival ? " · 라이벌" : ""}</small></button>`; }).join("")}</div></div>` : ""}
+      <div class="ranks ${bd.masters.length ? "" : "one"}">
+        <div><h3 class="sec">${bd.masters.length ? "내 순위 둘레" : "🟣 마스터즈 에이트"}</h3><ol class="rlist">${bd.near.map(row).join("")}</ol></div>
+        ${bd.masters.length ? `<div><h3 class="sec">🟣 마스터즈 에이트</h3><ol class="rlist">${bd.masters.map(row).join("")}</ol></div>` : ""}
       </div>
       <div class="news-box"><h3 class="sec">📰 오늘의 순위 소식</h3>${Ranking.news(day, me).map((n) => `<p>${esc(n)}</p>`).join("")}</div>
     </div>`);
@@ -1136,33 +1264,43 @@ function renderLeague() {
     const b = e.target.closest("[data-v]");
     if (!b) return;
     SFX.tap();
-    if (b.dataset.v === "home") renderHome();
-    if (b.dataset.v === "match") startMatch(oppId);
-    if (b.dataset.v === "free") startMatch(Ct.NORMAL_LINE[Math.floor(Math.random() * 4)], true);
-    if (b.dataset.v === "pick") startMatch(b.dataset.id, b.dataset.id !== oppId);
+    const v = b.dataset.v;
+    if (v === "home") renderHome();
+    if (v === "match") startMatch(oppId);
+    if (v === "tech") startConcept(b.dataset.id, renderLeague);
+    if (v === "defend") startMatch(Ct.MASTERS[Math.floor(Math.random() * 7)], true);
+    if (v === "pick") startMatch(b.dataset.id, b.dataset.id !== oppId);
   };
-  if (S().lastRankDay !== day) {
+  // 새 클래스에 처음 왔을 때 / 하루 첫 방문
+  const welcome = { super: L.welcomeSuper, hyper: L.welcomeHyper, master: L.welcomeMaster }[lg.cls];
+  if (lg.welcomed !== lg.cls && welcome) { lg.welcomed = lg.cls; Store.save(); Voice.speak(todo.length ? [welcome, L.techGate] : [welcome]); }
+  else if (S().lastRankDay !== day) {
     S().lastRankDay = day; Store.save();
     Voice.speak(lg.wins + lg.losses === 0 ? [L.leagueHello] : [L.newsHello]);
   }
 }
 async function startMatch(oppId, practice) {
   const tr = Ct.TRAINERS[oppId];
-  const lg = S().league;
+  const lg = league(), L0 = clsOf(lg);
   const saved = S().game && S().game.trainer === oppId ? S().game : null;
-  const board = playScreen({ title: `${tr.promo ? "⭐ 승급전 · " : tr.rival ? "⚔️ 라이벌전 · " : ""}vs ${tr.name}`, onExit: renderLeague });
+  const round = L0.tournament && !practice ? L0.rounds[Math.min(lg.clsWins, 2)] : null;
+  const label = round ? `🏆 ${round} · ` : tr.promo ? "⭐ 승급전 · " : tr.rival ? "⚔️ 라이벌전 · " : "";
+  const board = playScreen({ title: `${label}vs ${tr.name}`, onExit: renderLeague });
   board.set(C.parse(C.START), { ace: tr.ace });
   board.marks({});
   if (!saved) {
-    setInfo(`${tr.rival ? `<div class="rival-banner">⚔️ 라이벌전 ⚔️</div>` : ""}<div class="vs"><img src="${trn("ash")}" alt=""><b>VS</b><img src="${trn(tr.sprite)}" alt=""></div><p class="tr-line">“${esc(tr.hello)}”</p>`);
-    say(tr.rival ? [L.rivalIntro, tr.hello] : [tr.hello]);
+    const banner = round ? `<div class="rival-banner gold">🏆 ${round} 🏆</div>` : tr.rival ? `<div class="rival-banner">⚔️ 라이벌전 ⚔️</div>` : lg.cls === "champion" ? `<div class="rival-banner gold">👑 챔피언 방어전</div>` : "";
+    setInfo(`${banner}<div class="vs"><img src="${trn("ash")}" alt=""><b>VS</b><img src="${trn(tr.sprite)}" alt=""></div><p class="tr-line">“${esc(tr.hello || "좋은 승부 하자!")}”</p>`);
+    say(tr.rival ? [L.rivalIntro, tr.hello] : lg.cls === "champion" ? [L.championHello] : [tr.hello]);
     if (!(await askSide([["go", "대결 시작! ▶", "primary"]]))) return;
   }
   const lossStreak = lg.lossStreak || 0;
-  const bot = Math.max(1, tr.bot - (lossStreak >= 2 ? 1 : 0)); // 두 번 지면 몰래 한 단계 약하게
-  const help = S().settings.help === "auto" ? "full" : S().settings.help;
+  const base = lg.cls === "champion" ? 7 : tr.bot || 5;
+  const bot = Math.max(1, base - (lossStreak >= 2 ? 1 : 0)); // 두 번 지면 몰래 한 단계 약하게
+  const help = S().settings.help === "auto" ? L0.help : S().settings.help;
   const r = await runGame({
     board, cfg: { fen: C.START, goal: { type: "mate" } }, bot, help, title: tr.name, trainer: tr, onExit: renderLeague,
+    hints: INF_CNT(L0.hints), undos: INF_CNT(L0.undos),
     resume: saved ? saved.moves : null,
     onSave: practice ? null : (moves) => { S().game = { trainer: oppId, moves }; Store.save(); },
   });
@@ -1171,46 +1309,79 @@ async function startMatch(oppId, practice) {
   await afterMatch(tr, oppId, r, practice);
 }
 async function afterMatch(tr, oppId, r, practice) {
-  const lg = S().league;
+  const lg = league(), L0 = clsOf(lg);
   const old = lg.rank;
-  let promoted = false;
+  let promoted = null, champion = false, dropped = false, tNext = false;
   if (!practice) {
     if (r.winner === "w") {
       lg.lossStreak = 0;
-      if (tr.promo) { lg.rank = Ct.PROMO_RANK; lg.cls = "super"; promoted = true; }
-      else { lg.rank = Ct.NORMAL_STEPS[Math.min(lg.wins, Ct.NORMAL_STEPS.length - 1)]; }
       lg.wins++;
+      if (L0.tournament) {
+        lg.rank = L0.steps[Math.min(lg.clsWins, L0.steps.length - 1)];
+        lg.clsWins++;
+        if (lg.clsWins >= L0.tournament.length) { lg.cls = "champion"; lg.clsWins = 0; champion = true; S().championAt = Date.now(); }
+        else tNext = true;
+      } else if (oppId === L0.promo) {
+        lg.rank = L0.promoRank; lg.cls = L0.next; lg.clsWins = 0; lg.rivalBeat = false; promoted = L0.next;
+      } else {
+        lg.rank = L0.steps[Math.min(lg.clsWins, L0.steps.length - 1)];
+        lg.clsWins++;
+      }
       if (!lg.beaten.includes(oppId)) lg.beaten.push(oppId);
       if (tr.rival) { lg.rivalBeat = true; lg.rivalBeatDay = today(); }
-      S().moments.push({ fen: C.fen(r.g.s), title: `${tr.name}에게 승리!`, at: Date.now() });
-    } else if (r.winner === "b") { lg.losses++; lg.lossStreak = (lg.lossStreak || 0) + 1; }
-    else lg.draws++;
+      S().moments.push({ fen: C.fen(r.g.s), title: champion ? "👑 월드 챔피언!" : `${tr.name}에게 승리!`, at: Date.now() });
+    } else if (r.winner === "b") {
+      lg.losses++; lg.lossStreak = (lg.lossStreak || 0) + 1;
+      if (L0.lossDrop) {
+        const d = L0.lossDrop[0] + Math.floor(Math.random() * (L0.lossDrop[1] - L0.lossDrop[0] + 1));
+        const nr = Math.min(L0.floor, lg.rank + d);
+        if (nr > lg.rank) { lg.rank = nr; dropped = true; }
+      }
+    } else lg.draws++;
     Store.save();
   }
-  // 순위 변동 연출
-  let passed = Ranking.passed(today(), old, lg.rank, lg.wins - 1);
+  // 순위 변동 연출: 앞지른 트레이너들
+  let passed = [];
+  if (promoted === "master") passed = [{ id: "raihan", name: "금랑", sprite: "raihan" }, ...Ranking.passed(today(), old, 8, lg.wins - 1)];
+  else if (old <= 8) {
+    // 마스터즈 에이트 안: 앞지른 마스터들 (금랑은 아이가 들어올 때 밀려남)
+    passed = Ct.MASTERS.filter((x) => x !== "raihan").map((id, i) => ({ id, name: Ct.TRAINERS[id].name, sprite: Ct.TRAINERS[id].sprite, rank: i + 1 }))
+      .filter((x) => x.rank >= lg.rank && x.rank < old);
+  } else if (lg.rank < old) passed = Ranking.passed(today(), old, lg.rank, lg.wins - 1);
   const rivalWin = !practice && tr.rival && r.winner === "w";
   if (rivalWin) passed = [{ id: "bea", name: "채두", sprite: "bea", rival: true }, ...passed.filter((x) => !x.rival)];
   const trLine = r.winner === "w" ? tr.bye : r.winner === "b" ? tr.win : null;
-  const d = layer("modal", `<div class="win-box rank-box">
-      <h2>${r.winner === "w" ? (rivalWin ? "⚔️ 라이벌 채두를 이겼어요!" : "🎉 승리!") : r.winner === "b" ? "😢 아쉬워요" : "🤝 비겼어요"}</h2>
+  const promoLine = { super: L.promoClass, hyper: L.promoHyper, master: L.promoMaster }[promoted];
+  const title = champion ? "👑 월드 챔피언!" : r.winner === "w" ? (rivalWin ? "⚔️ 라이벌 채두를 이겼어요!" : tNext ? `🏆 ${L0.rounds[lg.clsWins]} 진출!` : "🎉 승리!") : r.winner === "b" ? "😢 아쉬워요" : "🤝 비겼어요";
+  const diff = Math.abs(old - lg.rank);
+  const tLose = L0.tournament && r.winner === "b" && !practice;
+  const d = layer("modal", `<div class="win-box rank-box ${champion ? "champion-box" : ""}">
+      <h2>${title}</h2>
+      ${champion ? `<div class="trophy">🏆</div>` : ""}
       ${trLine ? `<p class="tr-say"><img src="${trn(tr.sprite)}" alt=""> “${esc(trLine)}”</p>` : ""}
       <div class="rank-roll"><small>세계 순위</small><b id="rollNum">${old.toLocaleString()}</b><span>위</span></div>
-      <p id="rollMsg">${lg.rank < old ? `${(old - lg.rank).toLocaleString()}계단 올랐어요!` : esc(L.rankSame)}</p>
+      <p id="rollMsg">${lg.rank < old ? `${diff.toLocaleString()}계단 올랐어요!` : dropped ? `${diff}계단 내려갔어요. 다시 올라가 보자!` : tLose ? esc(L.tLose) : esc(L.rankSame)}</p>
       <ul class="passed">${passed.slice(0, 5).map((x) => `<li><img src="${trn(x.sprite)}" alt=""> ${esc(x.name)} ${x.rival ? "<em>라이벌!</em>" : ""} ⬇</li>`).join("")}${passed.length > 5 ? `<li>…그리고 ${passed.length - 5}명 더!</li>` : ""}</ul>
-      ${promoted ? `<p class="promo">🔵 ${esc(L.promoClass)}</p>` : ""}
+      ${promoLine ? `<p class="promo">${clsInfo(promoted).ball} ${esc(promoLine)}</p>` : ""}
+      ${champion ? `<p class="promo">👑 ${esc(L.champion)}</p>` : ""}
       <div class="row"><button class="btn big primary" data-v="next">${r.review && r.review.length ? "돌아보기 ▶" : "계속 ▶"}</button></div></div>`);
-  if (lg.rank < old) {
-    SFX.rank();
+  if (lg.rank !== old) {
+    if (lg.rank < old) SFX.rank();
     const el = $("#rollNum", d), t0 = performance.now(), dur = TEST ? 1 : 1600;
     const tick = (t) => {
       const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
-      el.textContent = Math.round(old - (old - lg.rank) * e).toLocaleString();
+      el.textContent = Math.round(old + (lg.rank - old) * e).toLocaleString();
       if (k < 1) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
-    Voice.speak(rivalWin ? [L.rivalWin, tr.bye] : [promoted ? L.promoClass : L.rankUp]);
   }
+  if (champion) { SFX.win(); Voice.speak([L.champion, tr.bye]); }
+  else if (rivalWin) Voice.speak([L.rivalWin, tr.bye]);
+  else if (promoLine) Voice.speak([promoLine]);
+  else if (tNext) Voice.speak([L.tNext, tr.bye]);
+  else if (lg.rank < old) Voice.speak([L.rankUp]);
+  else if (dropped) Voice.speak([L.hyperDrop]);
+  else if (tLose) Voice.speak([L.tLose]);
   await waitPick(d);
   d.remove();
   if (r.review && r.review.length && r.winner !== undefined) await runReview(r.review);
@@ -1286,9 +1457,11 @@ function renderDex(tab) {
         <span>${done ? `${PC.chess} ${PC.glyph}` : "스쿨에서 배우면 등록"}</span>${done ? `<small>⚡ ${PC.value || "대장"} · 잡은 횟수 ${S().captures[p] || 0}</small><small class="tip">${esc(PC.tip)}</small>` : ""}</div>`;
     }).join("")}</div>`;
   } else if (tab === "trainers") {
-    const ids = [...Ct.NORMAL_LINE, Ct.NORMAL_PROMO];
+    // 모든 클래스 상대 (채두는 한 칸 — 라이벌전 셋 중 하나라도 이기면 등록)
+    const ids = allTrainerIds().filter((id) => id !== "bea2" && id !== "bea3");
+    const beat = (id) => (id === "bea" ? ["bea", "bea2", "bea3"].some((x) => S().league.beaten.includes(x)) : S().league.beaten.includes(id));
     body = `<div class="dgrid">${ids.map((id) => {
-      const t = Ct.TRAINERS[id], won = S().league.beaten.includes(id);
+      const t = Ct.TRAINERS[id], won = beat(id);
       return `<div class="dcard ${won ? "" : "unknown"}"><img src="${trn(t.sprite)}" alt=""><b>${won ? esc(t.name) : "???"}</b><span>${won ? `대장 ${esc(t.aceName)}` : "이기면 등록"}</span>${won ? `<img class="ace" src="${spr(t.ace)}" alt="">` : ""}</div>`;
     }).join("")}</div>`;
   } else if (tab === "badges") {
@@ -1342,11 +1515,11 @@ function renderParentPage() {
   screen("screen-list", `
     <div class="list-page parent">
       <div class="topbar"><button class="btn icon" data-v="home" aria-label="뒤로">◀</button><h2>🔒 어른 화면</h2></div>
-      <div class="pbox"><h3>진행</h3><p>말 ${done}/6 · 수업 ${cdone}/12 · 배지 ${badgeCount()}/8 · 리그 ${lg.rank.toLocaleString()}위 (${lg.wins}승 ${lg.losses}패 ${lg.draws}무) · 복습 대기 ${S().review.length}문제 · 도장 ${S().stamps}</p>
+      <div class="pbox"><h3>진행</h3><p>말 ${done}/6 · 수업 ${cdone}/12 · 배지 ${badgeCount()}/8 · 리그 ${esc(clsInfo(lg.cls).name)} ${lg.rank.toLocaleString()}위 (${lg.wins}승 ${lg.losses}패 ${lg.draws}무) · 기술 ${Ct.TECHS.filter((x) => S().concepts[x.id]).length}/${Ct.TECHS.length} · 복습 대기 ${S().review.length}문제 · 도장 ${S().stamps}</p>
         <p>${Ct.CONCEPTS.map((c) => `${c.title} ${S().concepts[c.id] ? stars3(S().concepts[c.id].stars) : "-"}`).join(" · ")}</p></div>
       <div class="pbox"><h3>소리</h3>${opt("voice", true, "목소리 켜기")}${opt("voice", false, "목소리 끄기")} ${opt("sfx", true, "효과음 켜기")}${opt("sfx", false, "효과음 끄기")}</div>
       <div class="pbox"><h3>말 모양</h3>${opt("skin", "poke", "포켓몬")}${opt("skin", "chess", "진짜 체스 말")}</div>
-      <div class="pbox"><h3>피카츄 도움 (리그)</h3>${opt("help", "auto", "자동(노멀 = 많이)")}${opt("help", "half", "반만")}${opt("help", "ask", "물을 때만")}${opt("help", "none", "혼자")}</div>
+      <div class="pbox"><h3>피카츄 도움 (리그)</h3>${opt("help", "auto", "자동 (클래스마다: 노멀 많이 → 슈퍼 반 → 하이퍼 물을 때만 → 마스터 혼자)")}${opt("help", "half", "반만")}${opt("help", "ask", "물을 때만")}${opt("help", "none", "혼자")}</div>
       <div class="pbox"><h3>🔓 모든 콘텐츠 열기 (어른 모드)</h3><p>켜면 모든 말·단계·수업·배지·리그 상대를 골라서 바로 할 수 있어요. 아이 기록은 그대로예요.</p>${opt("unlockAll", false, "🔒 차례대로 열기")}${opt("unlockAll", true, "🔓 모두 열기")}</div>
       <div class="pbox danger"><h3>기록 지우기</h3><p>지우려면 아래 칸에 <b>초기화</b> 라고 써 주세요.</p><input id="resetIn" autocomplete="off"><button class="btn" data-v="reset">모두 지우기</button></div>
       <p class="ver">v${esc(APP_VERSION)}</p>
@@ -1401,6 +1574,6 @@ window.addEventListener("online", () => checkUpdate(true));
 setInterval(() => checkUpdate(), 10 * 60000);
 
 // ---------- 시험용 손잡이 (?test) ----------
-if (TEST) window.__T = { Store, renderHome, renderSchool, startPiece, startConcept, renderBadges, startBadge, renderLeague, startMatch, renderDex, renderParent, renderParentPage, P: () => P, lastSay: () => lastSay, runReview };
+if (TEST) window.__T = { afterMatch, league, Store, renderHome, renderSchool, startPiece, startConcept, renderBadges, startBadge, renderLeague, startMatch, renderDex, renderParent, renderParentPage, P: () => P, lastSay: () => lastSay, runReview };
 
 renderHome();

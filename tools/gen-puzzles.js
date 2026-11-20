@@ -212,6 +212,87 @@ OUT.C11 = [];
   OUT.C11.sort(() => rng() - 0.5);
 }
 
+// =====================================================================
+// 기술 수업 퍼즐 (T1~T5, 2026-11-20 추가) — 위의 퍼즐들 뒤에 붙여 만들어서 기존 퍼즐은 그대로다
+// 정답은 엔진으로 미리 구해 answers 에 적어 둔다 (런타임에 다시 계산하지 않음)
+// =====================================================================
+const clean = (s) => legalPos(s) && !C.inCheck(s) && !A.freeCaptures(s).length && !A.hanging(s, "w").length && !A.mateIn1(s).length;
+const uciOf = (x) => C.uci(x.m);
+function putRand(b, p, ok) {
+  for (let k = 0; k < 300; k++) {
+    const i = rint(64);
+    if (b[i] || (ok && !ok(i)) || ("Pp".includes(p) && (i < 8 || i >= 56))) continue;
+    b[i] = p;
+    return true;
+  }
+  return false;
+}
+function tacticMaker(kind) {
+  return () => {
+    const att = kind === "fork" ? pick(["N", "N", "N", "Q", "P", "B", "R"]) : pick(["B", "R", "Q", "B", "R"]);
+    const front = kind === "fork" ? pick(["r", "q", "b", "n"]) : kind === "pin" ? pick(["n", "b", "r", "n"]) : pick(["k", "q", "q", "r"]);
+    const spec = [["K", (i) => i < 16], ["k", (i) => i >= 40], [att, att === "P" ? (i) => i >= 16 && i < 48 : null],
+      [front === "k" ? "q" : front], [pick(["r", "q", "b", "n"])], ["p", (i) => i >= 40], ["P", (i) => i < 24]];
+    const b = place(spec);
+    if (!b) return null;
+    const s = S(b, "w");
+    if (!clean(s)) return null;
+    // 빠른 거르기: 그 기술 모양이 되는 수가 하나라도 있나
+    if (!C.moves(s).some((m) => A.tacticOf(s, m) === kind)) return null;
+    const vals = A.moveValues(s, kind === "pin" ? 3 : 2);
+    if (!vals.length || vals[0].v < (kind === "pin" ? 2 : 3)) return null;
+    const ans = vals.filter((x) => x.v >= vals[0].v - 0.5);
+    if (ans.length > 2 || !ans.every((x) => A.tacticOf(s, x.m) === kind)) return null;
+    if (!uniq(s)) return null;
+    return { fen: fenOf(s), check: "answers", kind, answers: ans.map(uciOf) };
+  };
+}
+OUT.T1 = gen(10, tacticMaker("fork"));
+console.log("T1 더블 어택", OUT.T1.length);
+// T2 뒷줄 조심: 상대 대장이 맨 뒷줄, 앞을 자기 폰이 막음 → 룩·퀸이 뒷줄로 들어가 메이트 (정답 하나)
+OUT.T2 = gen(8, () => {
+  const b = new Array(64).fill(null);
+  const kf = pick([4, 5, 6, 6, 7, 7]);
+  b[56 + kf] = "k";
+  for (const df of [-1, 0, 1]) { const f = kf + df; if (f >= 0 && f < 8) b[48 + f] = "p"; }
+  putRand(b, "K", (i) => i < 16);
+  putRand(b, pick(["R", "R", "Q"]), (i) => i < 40);
+  if (rng() < 0.5) putRand(b, pick(["R", "B", "N"]), (i) => i < 40);
+  if (rng() < 0.6) putRand(b, pick(["r", "b", "n"]), (i) => i >= 16 && i < 48);
+  putRand(b, "P", (i) => i < 24);
+  const s = S(b, "w");
+  if (!legalPos(s) || C.inCheck(s)) return null;
+  const mates = A.mateIn1(s);
+  if (mates.length !== 1 || (mates[0].to >> 3) !== 7 || !"RQ".includes(mates[0].p)) return null;
+  if (A.hanging(s, "w").length || !uniq(s)) return null;
+  return { fen: fenOf(s), check: "mate", kind: "backrank" };
+});
+console.log("T2 뒷줄", OUT.T2.length);
+OUT.T3 = gen(8, tacticMaker("pin"));
+console.log("T3 묶기", OUT.T3.length);
+OUT.T4 = gen(8, tacticMaker("skewer"));
+console.log("T4 꿰뚫기", OUT.T4.length);
+// T5 두 수 메이트: 한 수 메이트는 없고, 첫 수 뒤 상대가 무엇을 해도 메이트가 있는 판 (첫 수 정답 1~2개)
+OUT.T5 = gen(8, () => {
+  const spec = [["k", (i) => (i >> 3) >= 6 || (i & 7) === 0 || (i & 7) === 7], ["K"], [pick(["Q", "R", "Q"])], [pick(["R", "N", "B"])]];
+  if (rng() < 0.5) spec.push(["p", (i) => i >= 40]);
+  const b = place(spec);
+  if (!b) return null;
+  const s = S(b, "w");
+  if (!legalPos(s) || C.inCheck(s) || A.mateIn1(s).length || A.hanging(s, "w").length) return null;
+  const answers = [];
+  for (const m of C.moves(s)) {
+    const t = C.make(s, m);
+    const rs = C.moves(t);
+    if (!rs.length) continue;
+    if (rs.every((r) => A.mateIn1(C.make(t, r)).length > 0)) answers.push(C.uci(m));
+    if (answers.length > 2) return null;
+  }
+  if (!answers.length || !uniq(s)) return null;
+  return { fen: fenOf(s), check: "mate2", kind: "mate2", answers };
+});
+console.log("T5 두 수 메이트", OUT.T5.length);
+
 // id 붙이기
 for (const [k, list] of Object.entries(OUT)) list.forEach((x, i) => (x.id = k + "-" + String(i + 1).padStart(2, "0")));
 

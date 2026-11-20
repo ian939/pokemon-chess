@@ -24,6 +24,15 @@ for (const [k, list] of Object.entries(PZ)) {
       if (!ok.length) bad(p.id, "정답 수 없음");
       if (p.check === "mate" && ok.length > 2) bad(p.id, "메이트가 " + ok.length + "개");
       if (p.check !== "escape" && ok.length === ms.length) bad(p.id, "아무 수나 정답");
+      if (p.answers && ok.length !== p.answers.length) bad(p.id, "정답 수 중 둘 수 없는 수가 있음");
+      if (p.check === "mate2") {
+        // 첫 수 뒤 상대가 무엇을 해도 한 수 메이트가 있어야 한다
+        for (const m of ok) {
+          const t = C.make(s, m);
+          if (!C.moves(t).every((r) => A.mateIn1(C.make(t, r)).length)) bad(p.id, "두 수 메이트가 아님 " + C.uci(m));
+        }
+      }
+      if (p.kind && "fork pin skewer".includes(p.kind) && ok.some((m) => A.tacticOf(s, m) !== p.kind)) bad(p.id, "정답이 " + p.kind + " 모양이 아님");
       if (show && list.indexOf(p) < 2) console.log(`\n${p.id} (${p.check}) 정답: ${ok.map(C.uci).join(", ")}\n${draw(s)}`);
     }
     if (k === "C10" && P.castleWhy(s, p.side) !== p.answer) bad(p.id, "캐슬링 답 다름");

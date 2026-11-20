@@ -49,10 +49,10 @@ def collect():
     const ko = new Set([...Object.values(V.L), ...V.expand()]);
     for (const p of Object.values(Ct.PIECES)) { p.story.forEach(x => ko.add(x)); }
     for (const b of Object.values(Ct.BATTLES)) ko.add(b.say);
-    for (const c of Ct.CONCEPTS) { c.intro.forEach(x => ko.add(x.say)); if (c.task.say) ko.add(c.task.say); }
+    for (const c of [...Ct.CONCEPTS, ...Ct.TECHS]) { c.intro.forEach(x => ko.add(x.say)); if (c.task.say) ko.add(c.task.say); }
     for (const b of Ct.BADGES) ko.add(b.say);
     const man = new Set();
-    const MEN = ['n1', 'n3', 'n4', 'n6', 'volkner', 'raihan', 'steven', 'leon'];
+    const MEN = ['n1', 'n3', 'n4', 'n6', 's1', 's3', 'gary', 'volkner', 'raihan', 'steven', 'leon'];
     for (const [id, t] of Object.entries(Ct.TRAINERS)) for (const x of [t.hello, t.bye, t.win]) if (x) (MEN.includes(id) ? man : ko).add(x);
     console.log(JSON.stringify({ ko: [...ko], man: [...man] }));
     """
