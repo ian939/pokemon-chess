@@ -1388,6 +1388,32 @@ async function afterMatch(tr, oppId, r, practice) {
   renderLeague();
 }
 
+/**
+ * 어른 화면: 리그를 어떤 클래스의 처음으로 옮긴다 (사용자 요청 2026-11-22 — 다른 사람이 대신 올려 놓았을 때).
+ * 그 클래스부터 위에서 이긴 상대·라이벌 기록을 지우고, resetTech 면 그 클래스부터의 기술 수업 기록도 지운다.
+ * 배지·스쿨·전체 승패·명장면은 그대로 둔다.
+ */
+const CLASS_START = { normal: Ct.START_RANK, super: 999, hyper: 99, master: 8 };
+function setLeagueClass(cls, resetTech) {
+  const lg = league();
+  const from = CLASS_ORDER.indexOf(cls);
+  const later = CLASS_ORDER.slice(from);
+  const drop = new Set();
+  for (const c of later) {
+    const L0 = Ct.LEAGUE[c];
+    if (L0) for (const x of [...(L0.line || []), ...(L0.promo ? [L0.promo] : []), ...(L0.tournament || [])]) drop.add(x);
+  }
+  lg.beaten = lg.beaten.filter((x) => !drop.has(x));
+  Object.assign(lg, { cls, rank: CLASS_START[cls], clsWins: 0, rivalBeat: false, rivalBeatDay: null, lossStreak: 0, welcomed: null });
+  S().game = null;
+  if (resetTech) {
+    for (const tc of Ct.TECHS) if (CLASS_ORDER.indexOf(tc.cls) >= from) delete S().concepts[tc.id];
+    const pools = new Set(Ct.TECHS.filter((tc) => CLASS_ORDER.indexOf(tc.cls) >= from).map((tc) => tc.task.pool));
+    S().review = S().review.filter((r) => !pools.has(r.pool));
+  }
+  Store.save();
+}
+
 // =====================================================================
 // 끝난 뒤 돌아보기 (plan §6.3)
 // =====================================================================
@@ -1507,6 +1533,7 @@ function renderParent() {
     else if (v === "ok") toast("틀렸어요");
   });
 }
+const parentPick = { cls: null, tech: true };
 function renderParentPage() {
   const st = S().settings;
   const done = Ct.ORDER.filter(pieceDone).length, cdone = Ct.CONCEPTS.filter((c) => conceptDone(c.id)).length;
@@ -1521,10 +1548,20 @@ function renderParentPage() {
       <div class="pbox"><h3>말 모양</h3>${opt("skin", "poke", "포켓몬")}${opt("skin", "chess", "진짜 체스 말")}</div>
       <div class="pbox"><h3>피카츄 도움 (리그)</h3>${opt("help", "auto", "자동 (클래스마다: 노멀 많이 → 슈퍼 반 → 하이퍼 물을 때만 → 마스터 혼자)")}${opt("help", "half", "반만")}${opt("help", "ask", "물을 때만")}${opt("help", "none", "혼자")}</div>
       <div class="pbox"><h3>🔓 모든 콘텐츠 열기 (어른 모드)</h3><p>켜면 모든 말·단계·수업·배지·리그 상대를 골라서 바로 할 수 있어요. 아이 기록은 그대로예요.</p>${opt("unlockAll", false, "🔒 차례대로 열기")}${opt("unlockAll", true, "🔓 모두 열기")}</div>
+      <div class="pbox"><h3>🏆 리그 위치 바꾸기</h3>
+        <p>다른 사람이 대신 올려 놓았을 때, 원하는 클래스의 <b>처음</b>부터 다시 시작해요. 그 클래스부터 위에서 이긴 상대 기록은 지워지고, 배지·스쿨·명장면은 그대로예요.</p>
+        <p>지금: <b>${esc(clsInfo(lg.cls).name)} ${lg.rank.toLocaleString()}위</b></p>
+        <div>${["normal", "super", "hyper", "master"].map((c) => `<button class="btn ${parentPick.cls === c ? "primary" : ""}" data-lc="${c}">${clsInfo(c).ball} ${esc(clsInfo(c).name)} 처음 (${CLASS_START[c].toLocaleString()}위)</button>`).join("")}</div>
+        <div><button class="btn ${parentPick.tech ? "primary" : ""}" data-lt="1">📚 이 클래스부터 기술 수업도 다시 배우기 ${parentPick.tech ? "✅" : "⬜"}</button></div>
+        ${parentPick.cls ? `<p><b>${esc(clsInfo(parentPick.cls).name)} 처음(${CLASS_START[parentPick.cls].toLocaleString()}위)</b>으로 옮기려면 아래 칸에 <b>바꾸기</b> 라고 써 주세요.</p><input id="leagueIn" autocomplete="off"><button class="btn" data-v="league">리그 위치 바꾸기</button>` : "<p>위에서 클래스를 먼저 골라 주세요.</p>"}
+      </div>
       <div class="pbox danger"><h3>기록 지우기</h3><p>지우려면 아래 칸에 <b>초기화</b> 라고 써 주세요.</p><input id="resetIn" autocomplete="off"><button class="btn" data-v="reset">모두 지우기</button></div>
       <p class="ver">v${esc(APP_VERSION)}</p>
     </div>`);
   app().onclick = (e) => {
+    const lc = e.target.closest("[data-lc]");
+    if (lc) { parentPick.cls = lc.dataset.lc; SFX.tap(); renderParentPage(); return; }
+    if (e.target.closest("[data-lt]")) { parentPick.tech = !parentPick.tech; SFX.tap(); renderParentPage(); return; }
     const k = e.target.closest("[data-k]");
     if (k) {
       let v = k.dataset.val;
@@ -1535,6 +1572,15 @@ function renderParentPage() {
     const b = e.target.closest("[data-v]");
     if (!b) return;
     if (b.dataset.v === "home") renderHome();
+    if (b.dataset.v === "league") {
+      if ($("#leagueIn").value.trim() === "바꾸기") {
+        setLeagueClass(parentPick.cls, parentPick.tech);
+        toast(`${clsInfo(parentPick.cls).name} 처음(${CLASS_START[parentPick.cls].toLocaleString()}위)으로 옮겼어요`);
+        parentPick.cls = null;
+        renderParentPage();
+      } else toast("'바꾸기' 라고 정확히 써 주세요");
+      return;
+    }
     if (b.dataset.v === "reset") {
       if ($("#resetIn").value.trim() === "초기화") { Store.reset(); toast("모두 지웠어요"); renderHome(); }
       else toast("'초기화' 라고 정확히 써 주세요");
